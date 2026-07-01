@@ -42,11 +42,6 @@
 1. 前往 [Releases 页面](https://github.com/Simple53/OmniExtract/releases) 下载 `OmniExtract.exe`
 2. 双击运行，浏览器会自动打开 `http://127.0.0.1:8000`
 
-> **注意**：首次运行需联网下载 Playwright Chromium 浏览器组件（约 150MB，仅首次）。如果提示缺少组件，在 EXE 同目录下打开命令提示符执行：
-> ```
-> playwright install chromium
-> ```
-
 ---
 
 ### 方式二：🐳 Docker 部署（推荐）
@@ -84,10 +79,7 @@ python -m venv .venv
 # 3. 安装依赖
 pip install -r requirements.txt
 
-# 4. 安装浏览器组件（用于网页抓图，仅首次）
-playwright install chromium
-
-# 5. 启动服务
+# 4. 启动服务
 python server.py
 ```
 
@@ -197,7 +189,6 @@ OmniExtract/
 
 - `config.json` 和 `history.json` 含有 API Key 等敏感信息，已加入 `.gitignore`，**请勿手动提交**
 - 使用本地 OCR（RapidOCR）时，首次运行会自动下载约 40MB 的 ONNX 模型文件
-- 网页抓图依赖 Playwright + Chromium，首次使用需执行 `playwright install chromium`
 - 本地 OCR 精度一般，推荐配置 Gemini 或 OpenAI 接口以获得最佳表格还原效果
 
 ---

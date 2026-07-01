@@ -33,8 +33,29 @@ from PIL import Image
 import google.genai as genai
 from google.genai import types as genai_types
 from openai import OpenAI
-from rapidocr_onnxruntime import RapidOCR
 import urllib3
+try:
+    from rapidocr_onnxruntime import RapidOCR
+except ImportError:
+    RapidOCR = None
+
+try:
+    import winocr
+except ImportError:
+    winocr = None
+
+try:
+    from ocrmac import ocrmac
+except ImportError:
+    ocrmac = None
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+
+
+
 import urllib3.util.connection as xc_conn
 import urllib.request
 import json
@@ -136,8 +157,43 @@ class ImageAnalyzer:
             self.use_mineru = True
             logger.info(f"MinerU client initialized. URL: {self.base_url}")
 
+        self.use_system_ocr = False
+
+        # System Native OCR 跨平台原生引擎处理
+        if self.api_type == "System Native OCR" or self.api_type == "Windows OCR":
+            import sys
+            if sys.platform == "win32":
+                if winocr is None:
+                    raise ImportError(
+                        "当前为 Windows 系统，但未检测到 `winocr` 库。请运行 `pip install winocr` 进行安装以启用内置 OCR。"
+                    )
+            elif sys.platform == "darwin":
+                if ocrmac is None:
+                    raise ImportError(
+                        "当前为 macOS 系统，但未检测到 `ocrmac` 库。请运行 `pip install ocrmac` 进行安装以启用内置 OCR。"
+                    )
+            else:
+                # Linux 或其他 (如 Docker)
+                if pytesseract is None:
+                    raise ImportError(
+                        "当前为 Linux/Docker 环境，但未检测到 `pytesseract` 库。请运行 `pip install pytesseract`；"
+                        "且确保系统已安装 tesseract-ocr 命令行程序。"
+                    )
+                import shutil
+                if not shutil.which("tesseract"):
+                    raise ImportError(
+                        "系统未在 PATH 中找到 `tesseract` 命令行程序。请在系统中安装 tesseract-ocr（如 apt-get install tesseract-ocr tesseract-ocr-chi-sim）。"
+                    )
+            self.use_system_ocr = True
+            logger.info(f"System Native OCR initialized. Platform: {sys.platform}")
+
         # 兜底本地 OCR
-        if not (self.use_gemini or self.use_openai_compatible or self.use_mineru):
+        elif not (self.use_gemini or self.use_openai_compatible or self.use_mineru):
+            if RapidOCR is None:
+                raise ImportError(
+                    "未检测到本地 OCR 引擎。如果需要使用本地 OCR，请运行 `pip install rapidocr-onnxruntime` 进行安装；"
+                    "或者在页面右上角添加并选择 Gemini 或 OpenAI 兼容引擎。"
+                )
             logger.info("Using local RapidOCR.")
             self.local_ocr = RapidOCR()
 
@@ -160,6 +216,10 @@ class ImageAnalyzer:
             res = self._analyze_with_mineru(image_path, output_csv_path)
             if res and "source" not in res:
                 res["source"] = "MinerU API"
+        elif self.use_system_ocr:
+            res = self._analyze_with_system_ocr(image_path)
+            if res and "source" not in res:
+                res["source"] = "System Native OCR"
         else:
             res = self._analyze_with_local(image_path)
             if res and "source" not in res:
@@ -561,6 +621,11 @@ class ImageAnalyzer:
             }
         try:
             if not self.local_ocr:
+                if RapidOCR is None:
+                    raise ImportError(
+                        "未检测到本地 OCR 引擎。如果需要使用本地 OCR，请运行 `pip install rapidocr-onnxruntime` 进行安装；"
+                        "或者在页面右上角添加并选择 Gemini 或 OpenAI 兼容引擎。"
+                    )
                 self.local_ocr = RapidOCR()
             result, elapse = self.local_ocr(image_path)
             if not result:
@@ -629,6 +694,168 @@ class ImageAnalyzer:
 
         except Exception as e:
             logger.error(f"Local OCR error on {image_path}: {e}")
+            return {"type": "image", "content": "RETAIN_IMAGE", "csv_path": None}
+
+    def _analyze_with_system_ocr(self, image_path: str) -> dict:
+        """跨平台系统原生 OCR 调度引擎（自动适配 Windows / macOS / Linux）"""
+        import sys
+        try:
+            from PIL import Image
+            img = Image.open(image_path)
+            width, height = img.size
+            boxes = []
+
+            if sys.platform == "win32":
+                # Windows Built-in OCR
+                import winocr
+                result = winocr.recognize_pil_sync(img)
+                lines = result.get("lines", [])
+                for line in lines:
+                    line_text = line.get("text", "")
+                    words = line.get("words", [])
+                    if not words:
+                        continue
+                    
+                    min_x, min_y = float('inf'), float('inf')
+                    max_right, max_bottom = float('-inf'), float('-inf')
+                    for w in words:
+                        rect = w.get("bounding_rect", {})
+                        if rect:
+                            x, y = rect.get("x", 0), rect.get("y", 0)
+                            w_v, h_v = rect.get("width", 0), rect.get("height", 0)
+                            min_x = min(min_x, x)
+                            min_y = min(min_y, y)
+                            max_right = max(max_right, x + w_v)
+                            max_bottom = max(max_bottom, y + h_v)
+                    
+                    if min_x == float('inf') or min_y == float('inf'):
+                        continue
+                    w_val = max_right - min_x
+                    h_val = max_bottom - min_y
+                    boxes.append({
+                        "text": line_text,
+                        "cx": min_x + w_val / 2,
+                        "cy": min_y + h_val / 2,
+                        "height": h_val
+                    })
+
+            elif sys.platform == "darwin":
+                # macOS Vision OCR
+                from ocrmac import ocrmac
+                # ocrmac.OCR 返回的 bbox 格式为归一化的 [x, y, w, h] (且以左下角为原点)
+                annotations = ocrmac.OCR(image_path).recognize()
+                for text, confidence, bbox in annotations:
+                    if not text or not bbox:
+                        continue
+                    x, y, w, h = bbox
+                    cx = (x + w / 2) * width
+                    cy = (1.0 - y - h / 2) * height
+                    box_height = h * height
+                    boxes.append({
+                        "text": text,
+                        "cx": cx,
+                        "cy": cy,
+                        "height": box_height
+                    })
+
+            else:
+                # Linux / Docker (基于系统 Tesseract OCR 可执行文件)
+                import pytesseract
+                langs = 'eng'
+                try:
+                    available_langs = pytesseract.get_languages()
+                    if 'chi_sim' in available_langs:
+                        langs = 'chi_sim+eng'
+                except Exception:
+                    pass
+                
+                data = pytesseract.image_to_data(img, lang=langs, output_type=pytesseract.Output.DICT)
+                n_boxes = len(data['level'])
+                lines_map = {}
+                for i in range(n_boxes):
+                    if data['level'][i] == 5: # 单词/字 级
+                        text = data['text'][i].strip()
+                        if not text:
+                            continue
+                        block = data['block_num'][i]
+                        par = data['par_num'][i]
+                        line = data['line_num'][i]
+                        line_key = (block, par, line)
+                        
+                        x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
+                        if line_key not in lines_map:
+                            lines_map[line_key] = {"words": [], "text_parts": []}
+                        lines_map[line_key]["words"].append({"x": x, "y": y, "w": w, "h": h})
+                        lines_map[line_key]["text_parts"].append(text)
+                
+                for key, val in lines_map.items():
+                    words = val["words"]
+                    line_text = " ".join(val["text_parts"])
+                    min_x = min(w["x"] for w in words)
+                    min_y = min(w["y"] for w in words)
+                    max_right = max(w["x"] + w["w"] for w in words)
+                    max_bottom = max(w["y"] + w["h"] for w in words)
+                    
+                    w_val = max_right - min_x
+                    h_val = max_bottom - min_y
+                    boxes.append({
+                        "text": line_text,
+                        "cx": min_x + w_val / 2,
+                        "cy": min_y + h_val / 2,
+                        "height": h_val
+                    })
+
+            if not boxes:
+                return {"type": "image", "content": "RETAIN_IMAGE", "csv_path": None}
+
+            # 基于 cy 进行行聚类 (完全复用原有行排序与表格检测算法)
+            boxes.sort(key=lambda b: b["cy"])
+            rows = []
+            for box in boxes:
+                placed = False
+                for r in rows:
+                    avg_h = (r[0]["height"] + box["height"]) / 2
+                    if abs(r[0]["cy"] - box["cy"]) < (avg_h * 0.7):
+                        r.append(box)
+                        placed = True
+                        break
+                if not placed:
+                    rows.append([box])
+
+            for r in rows:
+                r.sort(key=lambda b: b["cx"])
+            rows.sort(key=lambda r: sum(b["cy"] for b in r) / len(r))
+
+            # 判定是否属于表格
+            multi_col_rows = sum(1 for r in rows if len(r) > 1)
+            is_table = len(rows) > 2 and multi_col_rows > len(rows) * 0.4
+
+            if is_table:
+                processed_rows = []
+                for r in rows:
+                    cells = [b["text"] for b in r]
+                    if cells and len(cells) > 0:
+                        m = re.match(r"^(\d{4})([一-龥]+.*)$", cells[0])
+                        if m:
+                            cells = [m.group(1), m.group(2)] + cells[1:]
+                    processed_rows.append(cells)
+
+                md_lines = []
+                col_count = max(len(r) for r in processed_rows)
+                for cells in processed_rows:
+                    cells = cells + [""] * (col_count - len(cells))
+                    md_lines.append("| " + " | ".join(cells) + " |")
+                if md_lines:
+                    separator = "|" + "|".join(["---"] * col_count) + "|"
+                    md_lines.insert(1, separator)
+                    return {"type": "table", "content": "\n".join(md_lines), "csv_path": None}
+
+            # 普通文本
+            line_texts = ["\t".join(b["text"] for b in r) for r in rows]
+            return {"type": "text", "content": "\n".join(line_texts), "csv_path": None}
+
+        except Exception as e:
+            logger.error(f"System Native OCR error on {image_path}: {e}")
             return {"type": "image", "content": "RETAIN_IMAGE", "csv_path": None}
 
     def _markdown_to_csv(self, md_text: str, output_path: str) -> str | None:

@@ -1,5 +1,4 @@
 import os
-import cv2
 import numpy as np
 from PIL import Image
 import logging
@@ -11,7 +10,7 @@ def smart_slice(image_path: str, max_height: int = 1000) -> list:
     """
     智能垂直切片长图。
     使用水平投影法找到最佳切分点（白色间隙/网格线），避免切断文字行。
-    支持非 ASCII 路径（如中文路径）。
+    仅依赖 Pillow 与 numpy，支持非 ASCII 路径（如中文路径）。
     """
     try:
         pil_img = Image.open(image_path)
@@ -22,13 +21,9 @@ def smart_slice(image_path: str, max_height: int = 1000) -> list:
 
         logger.info(f"Smart slicing: {image_path} ({width}x{height})")
 
-        # 使用 cv2.imdecode 支持非 ASCII 路径
-        img_np = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if img_np is None:
-            logger.warning(f"OpenCV failed to read {image_path}, falling back to standard slicing.")
-            return _standard_slice(pil_img, image_path, max_height)
-
-        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+        # 将图片转换为灰度图以进行水平投影计算
+        gray_img = pil_img.convert('L')
+        gray = np.array(gray_img)
 
         slices = []
         start_y = 0
@@ -62,16 +57,12 @@ def smart_slice(image_path: str, max_height: int = 1000) -> list:
                 end_y = win_start + best_offset
 
             # 裁剪并保存切片
-            slice_np = img_np[start_y:end_y, :]
+            slice_img = pil_img.crop((0, start_y, width, end_y))
             slice_path = os.path.join(base_dir, f"{base_name}_part_{part_idx}{ext}")
 
-            is_success, im_buf = cv2.imencode(ext, slice_np)
-            if is_success:
-                im_buf.tofile(slice_path)
-                slices.append(slice_path)
-                logger.info(f"Saved slice: {slice_path} (height: {end_y - start_y})")
-            else:
-                logger.error(f"Failed to save slice: {slice_path}")
+            slice_img.save(slice_path)
+            slices.append(slice_path)
+            logger.info(f"Saved slice: {slice_path} (height: {end_y - start_y})")
 
             start_y = end_y
             part_idx += 1
@@ -89,7 +80,7 @@ def smart_slice(image_path: str, max_height: int = 1000) -> list:
 
 
 def _standard_slice(pil_img: Image.Image, image_path: str, max_height: int) -> list:
-    """OpenCV 失败时的兜底等分切片"""
+    """Pillow 兜底等分切片"""
     try:
         width, height = pil_img.size
         sliced_paths = []
