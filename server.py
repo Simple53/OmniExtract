@@ -402,8 +402,11 @@ def compile_task_outputs(task_id: str) -> None:
     for i in range(total_images):
         if i in task["results"]:
             img_p, res_data = task["results"][i]
-            content = res_data.get("content", "")
             rtype = res_data.get("type", "text")
+            if rtype == "ignore":
+                continue
+                
+            content = res_data.get("content", "")
             rel_img_p = img_p.replace("\\", "/")
             if rtype == "text":
                 final_md += f"*(文本 - 图 {i + 1})*\n\n{content}\n\n---\n"
@@ -429,8 +432,11 @@ def compile_task_outputs(task_id: str) -> None:
     for i in range(total_images):
         if i in task["results"]:
             _, res_data = task["results"][i]
+            rtype = res_data.get("type", "text")
+            if rtype == "ignore":
+                continue
             content = res_data.get("content", "")
-            if res_data.get("type") == "table" or has_markdown_table(content):
+            if rtype == "table" or has_markdown_table(content):
                 try:
                     table_md = ensure_markdown_table(content)
                     df = parse_markdown_table(table_md)

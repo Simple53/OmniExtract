@@ -66,7 +66,7 @@
         header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(to right, #fff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.75rem; }
         header p { color: var(--text-secondary); font-size: 0.95rem; }
 
-        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: all 0.3s; }
         .glass-card:hover { border-color: rgba(255,255,255,0.15); }
 
         .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -80,7 +80,7 @@
 
         .config-item { background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: 10px; padding: 0.8rem 1rem; cursor: pointer; position: relative; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.2rem; }
         .config-item:hover { background: rgba(255,255,255,0.05); }
-        .config-item.active { border-color: var(--accent-color); background: rgba(59,130,246,0.08); box-shadow: 0 0 12px rgba(59,130,246,0.15); }
+        .config-item.active { border-color: var(--accent-color); background: rgba(59,130,246,0.08); }
         .config-item .config-name { font-weight: 600; font-size: 0.9rem; }
         .config-item .config-meta { font-size: 0.72rem; color: var(--text-secondary); }
         .config-item .delete-btn { position: absolute; top: 0.6rem; right: 0.6rem; color: var(--text-secondary); opacity: 0; transition: opacity 0.2s, color 0.2s; background: transparent; border: none; cursor: pointer; font-size: 0.8rem; }
@@ -98,11 +98,11 @@
 
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.55rem 0.9rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; border: none; font-family: inherit; }
         .btn-primary { background: var(--accent-gradient); color: white; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); }
         .btn-secondary { background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--card-border); }
-        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
-        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2); }
+        .btn-success { background: #10b981; color: white; border: none; }
+        .btn-success:hover { transform: translateY(-1px); }
         .btn-download { background: var(--form-control-bg); color: var(--text-primary); border: 1px solid var(--card-border); }
         .btn-download:hover { background: rgba(128, 128, 128, 0.15); border-color: var(--accent-color); transform: translateY(-1px); }
         .btn-block { width: 100%; }
@@ -157,7 +157,7 @@
         .preview-content th { background: rgba(128,128,128,0.1); }
         .edit-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
-        .dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4.5rem 2rem; border: none; border-radius: 16px; cursor: pointer; transition: all 0.3s; position: relative; gap: 1rem; text-align: center; background: rgba(128,128,128,0.02); min-height: 460px; box-shadow: none; }
+        .dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4.5rem 2rem; border: none; border-radius: 16px; cursor: pointer; transition: all 0.3s; position: relative; gap: 1rem; text-align: center; background: rgba(128,128,128,0.02); min-height: 460px; }
         .dropzone:hover { background: rgba(59,130,246,0.02); }
         .dropzone-icon { font-size: 4.5rem; color: var(--accent-color); opacity: 0.85; margin-bottom: 0.5rem; transition: transform 0.3s; }
         .dropzone:hover .dropzone-icon { transform: translateY(-5px); }
@@ -165,7 +165,7 @@
         .url-input-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; margin-top: 1rem; border-top: none; padding-top: 0; cursor: default; }
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
-        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; top: 50%; position: relative; transform: translateY(-50%); object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; top: 50%; position: relative; transform: translateY(-50%); object-fit: contain; border-radius: 8px; }
         .modal-close { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1001; transition: color 0.2s; }
         .modal-close:hover { color: var(--accent-color); }
 
@@ -179,8 +179,8 @@
         @keyframes drag-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .queue-thumb-item {
             position: relative;
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             border-radius: 10px;
             border: 1px solid var(--card-border);
             background: rgba(128,128,128,0.05);
@@ -188,8 +188,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             transition: all 0.2s;
+            cursor: pointer;
         }
         .queue-thumb-item:hover {
             transform: scale(1.03);
@@ -221,15 +221,14 @@
             border: none;
             transition: all 0.2s;
             z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .queue-thumb-del:hover {
             background: rgb(239, 68, 68);
             transform: scale(1.1);
         }
         .queue-thumb-add {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             border-radius: 10px;
             border: 2px dashed var(--card-border);
             display: flex;
@@ -308,7 +307,7 @@
 
 <div class="app-container">
     <header>
-        <h1 style="display:flex; align-items:center; gap:0.75rem;"><img src="/static/logo.jpg" alt="Logo" style="width:38px; height:38px; border-radius:10px; border:1px solid var(--card-border); object-fit:cover; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"> OmniExtract <span style="font-size:1.2rem;font-weight:400;opacity:0.7;">万象</span></h1>
+        <h1 style="display:flex; align-items:center; gap:0.75rem;"><img src="/static/logo.jpg" alt="Logo" style="width:38px; height:38px; border-radius:10px; border:1px solid var(--card-border); object-fit:cover;"> OmniExtract <span style="font-size:1.2rem;font-weight:400;opacity:0.7;">万象</span></h1>
         <div style="display:flex; align-items:center; gap:1rem;">
             <button class="theme-btn" id="theme-toggle-btn" title="切换主题">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
@@ -343,7 +342,7 @@
                 </div>
             </div>
             
-            <button class="btn btn-primary" id="start-btn" onclick="event.stopPropagation();" style="padding:0.65rem 2rem;font-size:0.9rem;border-radius:8px;box-shadow:0 4px 10px rgba(59,130,246,0.2);margin-top:0.5rem;"><i class="fa-solid fa-play"></i> 开始提取</button>
+            <button class="btn btn-primary" id="start-btn" onclick="event.stopPropagation();" style="padding:0.65rem 2rem;font-size:0.9rem;border-radius:8px;margin-top:0.5rem;"><i class="fa-solid fa-play"></i> 开始提取</button>
         </div>
 
         <div class="glass-card status-container" id="status-panel">
@@ -469,7 +468,7 @@
 </div>
 
 <div id="merge-decision-modal" class="modal" style="display: none; align-items: center; justify-content: center; z-index: 1100; background: rgba(0, 0, 0, 0.6);">
-    <div class="glass-card" style="width: 90%; max-width: 480px; padding: 2.2rem; border-radius: 16px; display: flex; flex-direction: column; gap: 1.5rem; position: relative; border: 1px solid var(--card-border); box-shadow: 0 20px 50px rgba(0,0,0,0.4); backdrop-filter: blur(25px); background: var(--bg-color); color: var(--text-primary);">
+    <div class="glass-card" style="width: 90%; max-width: 480px; padding: 2.2rem; border-radius: 16px; display: flex; flex-direction: column; gap: 1.5rem; position: relative; border: 1px solid var(--card-border); backdrop-filter: blur(25px); background: var(--bg-color); color: var(--text-primary);">
         <div style="display: flex; align-items: center; gap: 1rem; color: var(--accent-color); font-size: 1.3rem; font-weight: 600;">
             <i class="fa-solid fa-circle-question" style="font-size: 1.8rem; color: var(--accent-color);"></i>
             <span>如何处理并存的项目？</span>
@@ -558,6 +557,7 @@ function renderFileQueue() {
         if (file.type.startsWith("image/")) {
             const img = document.createElement("img");
             img.src = URL.createObjectURL(file);
+            item.onclick = (e) => enlargeImage(img.src);
             img.onload = () => URL.revokeObjectURL(img.src);
             item.appendChild(img);
         } else {
@@ -1089,6 +1089,7 @@ function renderCurrentPreview() {
                 ${isCompleted ? `
                 <div class="edit-actions" style="display:flex; gap:0.5rem; width:100%; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem; margin-top:0.5rem;">
                     <button class="btn btn-secondary" onclick="reextractSlice(${idx})" id="reextract-btn-${idx}" style="padding:0.35rem 0.75rem; font-size:0.75rem; border-color:var(--accent-color);"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent-color);"></i> 重新提取</button>
+                    <button class="btn btn-secondary" onclick="deleteSlice(${idx})" id="delete-btn-${idx}" style="padding:0.35rem 0.75rem; font-size:0.75rem; border-color:var(--error-color); color:var(--error-color);"><i class="fa-solid fa-trash"></i> 删除废弃切片</button>
                 </div>` : ''}
             </div>
         </div>`;
@@ -1141,6 +1142,27 @@ window.saveSliceText = function(idx) {
         if (d.status === "success") {
             const imgUrl = allResults[String(idx)][0];
             allResults[String(idx)] = [imgUrl, { type: newType, content: newContent }];
+        }
+    });
+}
+
+window.deleteSlice = function(idx) {
+    if (!currentTaskId) return;
+    if (!confirm("确定要废弃此切片吗？合并导出时将自动跳过此切片。")) return;
+    
+    fetch(`/api/result/${currentTaskId}/${idx}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "DELETED_SLICE", type: "ignore" })
+    }).then(r => r.json()).then(d => {
+        if (d.status === "success") {
+            const imgUrl = allResults[String(idx)][0];
+            allResults[String(idx)] = [imgUrl, { type: "ignore", content: "已废弃" }];
+            
+            // 立即从界面上移除或显示为已废弃
+            const container = document.getElementById("preview-card-container");
+            if (container) {
+                container.innerHTML = `<div class="preview-card" style="opacity:0.5; display:flex; justify-content:center; align-items:center; padding: 2rem;"><div style="color:var(--error-color);"><i class="fa-solid fa-trash-can"></i> 切片 ${idx + 1} 已废弃</div></div>`;
+            }
         }
     });
 }
