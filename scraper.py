@@ -16,7 +16,7 @@ SKIP_KEYWORDS = frozenset([
     'blank', 'loading', 'placeholder', 'pixel', 'tracking', 'ad', 'advertisement', 
     'banner', 'share', 'header', 'footer', 'sidebar', 'nav', 'sprite', 'emoticon', 
     'emoji', 'wechat', 'weixin', 'subscribe', 'follow', 'gzh', 'mpweixin', 'scan', 
-    'pay', 'alipay', 'reward', 'donate', 'zan', 'thumb', 'app-download', 'client'
+    'pay', 'alipay', 'reward', 'donate', 'zan', 'app-download', 'client'
 ])
 SKIP_EXTENSIONS = frozenset(['.gif'])  # 通常 GIF 是动画/装饰图标
 
