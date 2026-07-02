@@ -199,12 +199,31 @@ class ImageAnalyzer:
         # 兜底本地 OCR
         elif not (self.use_gemini or self.use_openai_compatible or self.use_mineru):
             if RapidOCR is None:
-                raise ImportError(
-                    "未检测到本地 OCR 引擎。如果需要使用本地 OCR，请运行 `pip install rapidocr-onnxruntime` 进行安装；"
-                    "或者在页面右上角添加并选择 Gemini 或 OpenAI 兼容引擎。"
-                )
-            logger.info("Using local RapidOCR.")
-            self.local_ocr = RapidOCR()
+                # 检查系统原生 OCR 是否可用（检测对应平台的绑定库）
+                system_available = False
+                import sys
+                if sys.platform == "win32":
+                    if winocr is not None:
+                        system_available = True
+                elif sys.platform == "darwin":
+                    if ocrmac is not None:
+                        system_available = True
+                else:
+                    import shutil
+                    if shutil.which("tesseract") and pytesseract is not None:
+                        system_available = True
+
+                if system_available:
+                    logger.info("RapidOCR is not installed. Automatically defaulting to System Native OCR.")
+                    self.use_system_ocr = True
+                else:
+                    raise ImportError(
+                        "未检测到本地 OCR 引擎。如果需要使用本地 OCR，请运行 `pip install rapidocr-onnxruntime` 进行安装；"
+                        "或者运行 `pip install winocr` (Windows) / `pip install ocrmac` (macOS) 启用轻量系统原生 OCR。"
+                    )
+            else:
+                logger.info("Using local RapidOCR.")
+                self.local_ocr = RapidOCR()
 
     def analyze(self, image_path: str, output_csv_path: str = None, formats: dict = None) -> dict:
         """
@@ -631,10 +650,11 @@ class ImageAnalyzer:
         try:
             if not self.local_ocr:
                 if RapidOCR is None:
-                    raise ImportError(
-                        "未检测到本地 OCR 引擎。如果需要使用本地 OCR，请运行 `pip install rapidocr-onnxruntime` 进行安装；"
-                        "或者在页面右上角添加并选择 Gemini 或 OpenAI 兼容引擎。"
-                    )
+                    # 如果未安装 RapidOCR（例如在 Lite 运行环境中），自动降级尝试 System Native OCR！
+                    logger.info("RapidOCR not installed. Automatically falling back to System Native OCR...")
+                    res = self._analyze_with_system_ocr(image_path)
+                    res["source"] = "System Native OCR"
+                    return res
                 self.local_ocr = RapidOCR()
             result, elapse = self.local_ocr(image_path)
             if not result:
@@ -702,8 +722,15 @@ class ImageAnalyzer:
             return {"type": "text", "content": "\n".join(line_texts), "csv_path": None}
 
         except Exception as e:
-            logger.error(f"Local OCR error on {image_path}: {e}")
-            return {"type": "image", "content": "RETAIN_IMAGE", "csv_path": None}
+            # 如果本地 RapidOCR 运行出错，或者缺失，均尝试用系统原生 OCR 进行最终兜底
+            logger.warning(f"Local OCR failed or not installed: {e}. Trying System Native OCR as fallback...")
+            try:
+                res = self._analyze_with_system_ocr(image_path)
+                res["source"] = "System Native OCR"
+                return res
+            except Exception as se:
+                logger.error(f"System OCR also failed: {se}")
+                return {"type": "image", "content": "RETAIN_IMAGE", "csv_path": None}
 
     def _analyze_with_system_ocr(self, image_path: str) -> dict:
         """跨平台系统原生 OCR 调度引擎（自动适配 Windows / macOS / Linux）"""
