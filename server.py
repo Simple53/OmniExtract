@@ -36,6 +36,7 @@ import concurrent.futures
 import pandas as pd
 import zipfile
 from typing import Dict, List, Any, Optional
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -54,16 +55,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Web_OCR_Server")
 
-app = FastAPI(title="Web OCR Engine API", version="2.0")
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     print("\n" + "="*60)
     print("  OmniExtract (万象多模态提取引擎) 服务已成功启动！")
     print("  本地管理页面: http://127.0.0.1:8000")
     print("  请使用浏览器打开上述链接开始进行高精度 OCR/网页提取。")
     print("="*60 + "\n")
     logger.info("OmniExtract 服务初始化就绪。")
+    yield
+
+app = FastAPI(title="Web OCR Engine API", version="2.0", lifespan=lifespan)
 
 # 启用 CORS
 app.add_middleware(
@@ -75,10 +77,17 @@ app.add_middleware(
 )
 
 # ── 路径常量 ─────────────────────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
-HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+import sys
+if getattr(sys, 'frozen', False):
+    BASE_DIR = sys._MEIPASS
+    DATA_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = BASE_DIR
+
+CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
+OUTPUT_DIR = os.path.join(DATA_DIR, "output")
 
 # 全局任务状态存储
 tasks_db: Dict[str, Dict[str, Any]] = {}

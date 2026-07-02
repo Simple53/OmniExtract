@@ -29,7 +29,8 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --add-data "static;static" server.py -n OmniExtract
+          pyinstaller --onefile --add-data "static;static" --add-data "index.html;." server.py -n OmniExtract
+
 
       - name: Release
         uses: softprops/action-gh-release@v2
