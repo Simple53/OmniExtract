@@ -4,9 +4,9 @@ pillow>=10.0.0
 google-genai>=0.8.0
 # 本地 OCR 依赖 (可选，若仅使用云端 API 可免装)
 rapidocr-onnxruntime>=1.3.0
-# 系统原生 OCR 依赖 (可选，根据运行平台安装):
-# Windows: winocr>=0.0.10
-# macOS: ocrmac>=0.1.0
+# 系统原生 OCR 依赖 (根据运行平台自动安装)
+winocr>=0.0.10; sys_platform == 'win32'
+ocrmac>=0.1.0; sys_platform == 'darwin'
 # Linux/Docker: pytesseract>=0.3.10
 pandas>=2.0.0
 openpyxl>=3.1.0
