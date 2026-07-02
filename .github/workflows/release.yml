@@ -29,13 +29,18 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --add-data "static;static" --add-data "index.html;." server.py -n OmniExtract
+          # Build Full Version (with local OCR)
+          pyinstaller --onefile --add-data "static;static" --add-data "index.html;." --icon="static/logo.ico" server.py -n OmniExtract-full
 
+          # Build Lite Version (without local OCR, excluding onnxruntime and cv2)
+          pyinstaller --onefile --add-data "static;static" --add-data "index.html;." --icon="static/logo.ico" --exclude-module rapidocr_onnxruntime --exclude-module onnxruntime --exclude-module cv2 server.py -n OmniExtract-lite
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/OmniExtract.exe
+          files: |
+            dist/OmniExtract-full.exe
+            dist/OmniExtract-lite.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
