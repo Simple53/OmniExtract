@@ -42,6 +42,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+import webbrowser
 
 from scraper import WebScraper
 from slicer import smart_slice
@@ -55,6 +56,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Web_OCR_Server")
 
+def open_browser():
+    """等待服务器启动后，自动在默认浏览器中打开管理页面"""
+    import time
+    time.sleep(1.5)
+    try:
+        webbrowser.open("http://127.0.0.1:8000")
+        logger.info("Successfully launched browser to http://127.0.0.1:8000")
+    except Exception as e:
+        logger.warning(f"Failed to open browser automatically: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n" + "="*60)
@@ -63,6 +74,9 @@ async def lifespan(app: FastAPI):
     print("  请使用浏览器打开上述链接开始进行高精度 OCR/网页提取。")
     print("="*60 + "\n")
     logger.info("OmniExtract 服务初始化就绪。")
+    
+    # 启动后台线程自动打开浏览器主界面
+    threading.Thread(target=open_browser, daemon=True).start()
     yield
 
 app = FastAPI(title="Web OCR Engine API", version="2.0", lifespan=lifespan)
