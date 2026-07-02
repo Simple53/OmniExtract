@@ -37,6 +37,7 @@ class WebScraper:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         self.session = requests.Session()
+        self.session.trust_env = False  # 禁用系统代理环境变量，防止开启本地代理软件时请求超时
         self._set_browser_headers()
 
     def _set_browser_headers(self, referer: str = None):
