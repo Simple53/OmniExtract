@@ -79,7 +79,6 @@ class WebScraper:
                         "Sec-Fetch-Mode": "navigate",
                     })
                     self.session.get(home_url, timeout=10, verify=False, allow_redirects=True)
-                    # 更新 Referer 为首页，模拟从首页跳转到文章
                     self.session.headers.update({
                         "Referer": home_url,
                         "Sec-Fetch-Site": "same-origin",
@@ -97,10 +96,9 @@ class WebScraper:
             
             logger.info("DrissionPage detected. Using local Chrome browser (headless) to load page...")
             
-            # 配置无头模式运行，避免显示浏览器窗口打扰用户
             co = ChromiumOptions()
             try:
-                co.set_headless(True)
+                co.set_argument('--headless')
                 co.set_argument('--no-sandbox')
                 co.set_argument('--disable-gpu')
             except Exception as e:
@@ -145,9 +143,14 @@ class WebScraper:
 
                 # 将浏览器端的 Cookies 复制给 requests 会话，使之后的图片下载请求能通过防盗链
                 try:
-                    cookies = page.cookies(as_dict=True)
-                    if cookies:
-                        self.session.cookies.update(cookies)
+                    # 兼容不同版本的 DrissionPage.cookies() 返回值格式
+                    cookies_list = page.cookies()
+                    cookies_dict = {}
+                    for cookie in cookies_list:
+                        if isinstance(cookie, dict) and 'name' in cookie and 'value' in cookie:
+                            cookies_dict[cookie['name']] = cookie['value']
+                    if cookies_dict:
+                        self.session.cookies.update(cookies_dict)
                         logger.info("Successfully copied browser cookies to requests session.")
                 except Exception as ce:
                     logger.warning(f"Failed to copy cookies from DrissionPage: {ce}")
@@ -209,28 +212,31 @@ class WebScraper:
                 or (soup.body if soup.body else soup)
             )
 
-            img_tags = main_content.find_all('img')
-            downloaded_paths = []
+            # 提取和下载图片的局部函数
+            def do_extraction(container) -> list:
+                paths = []
+                img_tags = container.find_all('img')
+                for img in img_tags:
+                    if self._should_skip_img_tag(img):
+                        continue
+                    img_url = self._extract_img_url(img)
+                    if not img_url:
+                        continue
+                    full_img_url = urllib.parse.urljoin(url, img_url)
+                    if self._should_skip_url(full_img_url):
+                        continue
+                    logger.info(f"Found image: {full_img_url}")
+                    local_path = self.download_image(full_img_url, len(paths) + 1, referer=url)
+                    if local_path:
+                        paths.append(local_path)
+                return paths
 
-            for i, img in enumerate(img_tags):
-                # 新增：直接检查 img 节点的属性（如 class, id, alt）进行拦截
-                if self._should_skip_img_tag(img):
-                    continue
+            downloaded_paths = do_extraction(main_content)
 
-                img_url = self._extract_img_url(img)
-                if not img_url:
-                    continue
-
-                full_img_url = urllib.parse.urljoin(url, img_url)
-
-                # 跳过图标类图片
-                if self._should_skip_url(full_img_url):
-                    continue
-
-                logger.info(f"Found image: {full_img_url}")
-                local_path = self.download_image(full_img_url, i, referer=url)
-                if local_path:
-                    downloaded_paths.append(local_path)
+            # 兜底：如果提取到的有效图片数量为 0，且刚才用的是偏向局部的区域，则对整个 body 重新进行提取
+            if not downloaded_paths and main_content != soup.body and main_content != soup:
+                logger.info("No valid images extracted from main_content. Falling back to search entire body...")
+                downloaded_paths = do_extraction(soup.body if soup.body else soup)
 
             return downloaded_paths
         except requests.RequestException as e:
@@ -242,8 +248,8 @@ class WebScraper:
 
     def _extract_img_url(self, img) -> str | None:
         """从 img 标签中提取最佳图片 URL（支持懒加载）"""
-        # 优先级：data-original > data-src > original > data-lazy-src > src
-        for attr in ['data-original', 'data-src', 'original', 'data-lazy-src', 'src']:
+        # 优先级：data-original > data-actualsrc > data-src > original > data-lazy-src > src
+        for attr in ['data-original', 'data-actualsrc', 'data-src', 'original', 'data-lazy-src', 'src']:
             val = img.get(attr)
             if val and not val.strip().startswith("data:image"):
                 val_lower = val.lower()
@@ -251,7 +257,7 @@ class WebScraper:
                     return val.strip()
 
         # 兜底：取 src
-        return img.get('src') or img.get('data-src')
+        return img.get('src') or img.get('data-src') or img.get('data-actualsrc')
 
     def _should_skip_img_tag(self, img) -> bool:
         """通过检查 img 标签的属性（如 class、id、alt、title 等）判定是否应该跳过"""
