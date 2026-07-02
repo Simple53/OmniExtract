@@ -380,7 +380,13 @@ class ImageAnalyzer:
         try:
             url = self.base_url.rstrip('/')
             if "mineru.net" in url:
-                return self._analyze_with_mineru_cloud(image_path, output_csv_path, url)
+                try:
+                    # 优先尝试原有的 v4 云端接口
+                    return self._analyze_with_mineru_cloud(image_path, output_csv_path, url)
+                except Exception as cloud_err:
+                    logger.warning(f"MinerU v4 Cloud API failed: {cloud_err}. Trying v1 Agent API as fallback...")
+                    # 尝试 /api/v1/agent/parse/file 备选接口
+                    return self._analyze_with_mineru_v1_agent(image_path, output_csv_path, url)
             return self._analyze_with_mineru_local(image_path, output_csv_path, url)
         except Exception as e:
             logger.error(f"MinerU API error on {image_path}: {e}")
@@ -388,6 +394,53 @@ class ImageAnalyzer:
             res = self._analyze_with_local(image_path)
             res["source"] = "Local OCR"
             return res
+
+    def _analyze_with_mineru_v1_agent(self, image_path: str, output_csv_path: str, base_url: str) -> dict:
+        """调用 MinerU v1 Agent 轻量版接口 (无需 Token 验证，限流但防失效)"""
+        filename = os.path.basename(image_path)
+        post_url = f"{base_url}/api/v1/agent/parse/file"
+        
+        # 1. 提交文件
+        with open(image_path, "rb") as f:
+            files = {"file": (filename, f, "image/jpeg")}
+            res = requests.post(post_url, files=files, timeout=45, verify=False)
+        
+        res.raise_for_status()
+        res_json = res.json()
+        task_id = res_json.get("task_id")
+        if not task_id:
+            raise Exception(f"No task_id returned from v1 agent: {res_json}")
+            
+        logger.info(f"MinerU v1 Agent task submitted. Task ID: {task_id}. Polling result...")
+        
+        # 2. 轮询结果
+        status_url = f"{base_url}/api/v1/agent/parse/{task_id}"
+        for _ in range(60):
+            time.sleep(3)
+            res_poll = requests.get(status_url, timeout=30, verify=False)
+            res_poll.raise_for_status()
+            poll_json = res_poll.json()
+            
+            status = poll_json.get("status")
+            if status == "success":
+                md_url = poll_json.get("url")
+                if not md_url:
+                    raise Exception("v1 agent success but returned no url")
+                # 下载 markdown 文件内容
+                res_md = requests.get(md_url, timeout=30, verify=False)
+                res_md.raise_for_status()
+                text = res_md.text
+                
+                res_dict = self._parse_result(text.strip(), output_csv_path)
+                res_dict["source"] = "MinerU v1 Agent API"
+                return res_dict
+            elif status == "failed":
+                raise Exception("v1 agent task failed on server side")
+            else:
+                # processing
+                continue
+                
+        raise Exception("v1 agent task poll timeout")
 
     def _analyze_with_mineru_local(self, image_path: str, output_csv_path: str, url: str) -> dict:
         """调用本地 MinerU /file_parse API"""
