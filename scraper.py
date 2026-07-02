@@ -88,38 +88,82 @@ class WebScraper:
                     logger.warning(f"Cookie warm-up failed for {domain}: {e}")
                 break
 
+    def _fetch_html_with_drission(self, url: str) -> str | None:
+        """使用 DrissionPage 驱动本地 Chrome 浏览器加载页面并返回完整的 HTML（解决反爬和 JS 动态加载）"""
+        try:
+            import time
+            from DrissionPage import ChromiumPage
+            logger.info("DrissionPage detected. Using local Chrome browser to load page...")
+            page = ChromiumPage()
+            try:
+                page.get(url)
+                # 等待页面加载和渲染
+                time.sleep(4)
+                
+                # 简单向下滚动以加载懒加载的图片
+                try:
+                    page.scroll.down(2000)
+                    time.sleep(2)
+                except Exception:
+                    pass
+
+                # 将浏览器端的 Cookies 复制给 requests 会话，使之后的图片下载请求能通过防盗链
+                try:
+                    cookies = page.cookies(as_dict=True)
+                    if cookies:
+                        self.session.cookies.update(cookies)
+                        logger.info("Successfully copied browser cookies to requests session.")
+                except Exception as ce:
+                    logger.warning(f"Failed to copy cookies from DrissionPage: {ce}")
+
+                html_content = page.html
+                return html_content
+            finally:
+                page.quit()
+        except Exception as e:
+            logger.warning(f"DrissionPage failed or not installed: {e}. Falling back to standard requests.")
+            return None
+
     def fetch_images(self, url: str) -> list:
         """
         抓取网页中的图片并下载到本地。
         返回本地文件路径列表。
         """
         logger.info(f"Fetching URL: {url}")
-        try:
-            # 1. 预热 Cookie（针对知乎等有反爬保护的网站）
-            self._warmup_cookies(url)
+        
+        # 优先使用 DrissionPage（调用本地 Chrome 解决 JS 渲染与反爬）
+        html_content = self._fetch_html_with_drission(url)
+        
+        if not html_content:
+            try:
+                # 1. 预热 Cookie（针对知乎等有反爬保护的网站）
+                self._warmup_cookies(url)
 
-            # 2. 请求目标页面
-            response = self.session.get(url, timeout=20, verify=False, allow_redirects=True)
-
-            # 3. 如果仍然 403，尝试带更多 headers 重试一次
-            if response.status_code == 403:
-                logger.warning(f"Got 403, retrying with extended headers: {url}")
-                retry_headers = {
-                    "Referer": f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}/",
-                    "Sec-Fetch-Site": "same-origin",
-                    "Sec-Fetch-Mode": "navigate",
-                    "Sec-Fetch-Dest": "document",
-                    "Pragma": "no-cache",
-                    "Cache-Control": "no-cache",
-                }
-                self.session.headers.update(retry_headers)
+                # 2. 请求目标页面
                 response = self.session.get(url, timeout=20, verify=False, allow_redirects=True)
 
-            response.raise_for_status()
+                # 3. 如果仍然 403，尝试带更多 headers 重试一次
+                if response.status_code == 403:
+                    logger.warning(f"Got 403, retrying with extended headers: {url}")
+                    retry_headers = {
+                        "Referer": f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}/",
+                        "Sec-Fetch-Site": "same-origin",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Dest": "document",
+                        "Pragma": "no-cache",
+                        "Cache-Control": "no-cache",
+                    }
+                    self.session.headers.update(retry_headers)
+                    response = self.session.get(url, timeout=20, verify=False, allow_redirects=True)
 
-            response.encoding = response.apparent_encoding
-            html_content = response.text
+                response.raise_for_status()
+                response.encoding = response.apparent_encoding
+                html_content = response.text
+            except Exception as e:
+                logger.error(f"Error fetching URL {url} with requests: {e}")
+                return []
 
+        try:
             soup = BeautifulSoup(html_content, 'html.parser')
 
             # 尝试定位主内容区域，避免抓取 header/footer 图片

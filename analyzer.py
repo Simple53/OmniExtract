@@ -154,10 +154,19 @@ class ImageAnalyzer:
                 logger.error(f"Failed to init OpenAI client: {e}")
 
         elif self.api_type == "MinerU (API)" and self.base_url:
-            self.use_mineru = True
-            logger.info(f"MinerU client initialized. URL: {self.base_url}")
+            if not self.api_key:
+                logger.warning("MinerU API token (api_key) is missing. Falling back to Local OCR.")
+                self.api_type = "Local OCR"
+            else:
+                self.use_mineru = True
+                logger.info(f"MinerU client initialized. URL: {self.base_url}")
 
         self.use_system_ocr = False
+
+        # 如果需要本地 OCR，但未安装 RapidOCR，则自动降级到系统原生 OCR
+        if self.api_type == "Local OCR" and RapidOCR is None:
+            logger.warning("RapidOCR is not installed. Auto falling back to System Native OCR.")
+            self.api_type = "System Native OCR"
 
         # System Native OCR 跨平台原生引擎处理
         if self.api_type == "System Native OCR" or self.api_type == "Windows OCR":

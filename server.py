@@ -104,6 +104,7 @@ def load_configs() -> Dict[str, Dict[str, Any]]:
         except (json.JSONDecodeError, IOError) as e:
             logger.warning(f"配置文件读取失败，使用默认配置: {e}")
     return {
+        "默认 MinerU (API)": {"api_type": "MinerU (API)", "api_key": "", "base_url": "https://mineru.net", "model_name": "vlm"},
         "默认 Local OCR": {"api_type": "Local OCR", "api_key": "", "base_url": "", "model_name": ""},
         "默认 Gemini": {"api_type": "Gemini (Native)", "api_key": "", "base_url": "", "model_name": "gemini-1.5-flash"}
     }
