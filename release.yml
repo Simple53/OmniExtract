@@ -1,0 +1,104 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            sep: ";"
+            platform: "win64"
+            ext: ".exe"
+            icon: '--icon="static/logo.ico"'
+          - os: macos-latest
+            sep: ":"
+            platform: "macos"
+            ext: ""
+            icon: ''
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            pip install winocr
+          fi
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            pip install ocrmac pyobjc-framework-Vision
+          fi
+
+      - name: Build Binary with PyInstaller
+        shell: bash
+        run: |
+          # Build Full Version (with local OCR)
+          pyinstaller --onefile --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} server.py -n OmniExtract-full-${{ matrix.platform }}${{ matrix.ext }}
+
+          # Build Lite Version (without local OCR)
+          pyinstaller --onefile --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} --exclude-module rapidocr_onnxruntime --exclude-module onnxruntime --exclude-module cv2 server.py -n OmniExtract-lite-${{ matrix.platform }}${{ matrix.ext }}
+
+      - name: Package DMG (macOS only)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          mkdir -p dist/full dist/lite
+          cp dist/OmniExtract-full-macos dist/full/
+          cp dist/OmniExtract-lite-macos dist/lite/
+          hdiutil create -volname "OmniExtract-full" -srcfolder dist/full/ -ov -format UDZO dist/OmniExtract-full-macos.dmg
+          hdiutil create -volname "OmniExtract-lite" -srcfolder dist/lite/ -ov -format UDZO dist/OmniExtract-lite-macos.dmg
+          rm -rf dist/full dist/lite
+          rm dist/OmniExtract-full-macos dist/OmniExtract-lite-macos
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.platform }}
+          path: dist/OmniExtract-*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+
+      - name: Flatten directory structure
+        run: |
+          mkdir -p dist
+          find dist-all -type f -exec cp {} dist/ \;
+          ls -la dist/
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,167 @@
+<div align="center">
+
+<img src="static/logo.jpg" alt="OmniExtract Logo" width="100" style="border-radius: 16px;" />
+
+# OmniExtract 万象多模态提取引擎 / Multimodal Extraction Engine
+
+**极速、极简的网页/图片多模态数据提取工具**  
+*Fast and minimalist multimodal data extraction tool for web pages, documents, and images.*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Release](https://img.shields.io/github/v/release/Simple53/OmniExtract?color=green)](https://github.com/Simple53/OmniExtract/releases)
+[![Windows EXE](https://img.shields.io/badge/Windows-EXE-0078D4?logo=windows&logoColor=white)](https://github.com/Simple53/OmniExtract/releases)
+[![Docker](https://img.shields.io/badge/Docker-支持-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/)
+
+[English](#english) | [中文说明](#中文说明)
+
+</div>
+
+---
+
+## English
+
+### ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| 🌐 **Web Image Scraping** | Input URL, automatically filter and scrape valid body images, skipping icons, ads, QR codes, etc. Powered by `DrissionPage` headless browser to bypass anti-crawler systems (like Zhihu, Toutiao). |
+| ✂️ **Smart Image Slicing** | Automatically split long screenshots vertically using horizontal projection, preventing text lines from being cut in half. |
+| 🤖 **Multi-Engine OCR/VLM** | Support Gemini Vision, OpenAI Compatible API, MinerU API, and Local RapidOCR, with automatic fallback cascade. |
+| 📊 **Table Structure Recovery** | Smartly identify and reconstruct Excel tables, keeping merged cell structures intact. |
+| 🖼️ **Multi-Format Export** | Support Markdown, TXT, HTML, Word (docx), LaTeX, CSV, Excel, and unified ZIP package downloads. |
+| 📡 **SSE Real-time Progress** | Stream processing status via Server-Sent Events (SSE) for real-time visualization of task progress. |
+| ✏️ **Online Editor** | Manually modify the markdown content of any slice, delete redundant slices, and re-merge. |
+| 🔄 **Breakpoint Resume** | Load historical session data to resume processing from where it was interrupted. |
+| 🌙 **Theme Switch** | Dual support for light and dark themes. |
+
+---
+
+### 🚀 Quick Start
+
+#### Method 1: Run EXE (Windows, Recommended)
+1. Go to [Releases Page](https://github.com/Simple53/OmniExtract/releases).
+2. Download `OmniExtract-lite.exe` (Lite version, ~25MB) or `OmniExtract-full.exe` (Full version with local offline OCR, ~105MB).
+3. Double-click the EXE to run. The browser will automatically open `http://127.0.0.1:8000`.
+
+#### Method 2: Docker Deployment
+No Python setup required. Fast and clean.
+```bash
+git clone https://github.com/Simple53/OmniExtract.git
+cd OmniExtract
+docker build -t omniextract .
+docker run -d -p 8000:8000 --name omniextract omniextract
+```
+Access the application at `http://localhost:8000`.
+
+#### Method 3: Local Python Run
+**Requirements: Python 3.10+**
+```bash
+git clone https://github.com/Simple53/OmniExtract.git
+cd OmniExtract
+
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run server
+python server.py
+```
+Or double-click `start.bat` on Windows.
+
+---
+
+### 📖 User Guide
+
+1. **Configure API Engine**: Click the **"Settings"** icon on the top right. Select your preferred engine (Gemini, OpenAI, MinerU, or Local/System OCR).
+2. **Extract Web Pages**: Paste the URL into the input field and click "Start Extraction".
+3. **Extract Local Files**: Drag and drop images, PDFs, Word, or Excel files into the drop area, or paste images directly via clipboard (Ctrl+V).
+4. **Edit & Output**: Review slice details, edit markdown, delete unwanted parts, and click "Merge and Generate" to export.
+
+---
+
+## 中文说明
+
+### ✨ 核心功能
+
+| 功能 | 说明 |
+|---|---|
+| 🌐 **网页图片抓取** | 输入 URL，自动过滤并抓取网页正文有效图片，跳过图标、广告图、二维码等。集成 `DrissionPage` 无头静默浏览器，完美穿透知乎、头条等强反爬 JS 校验。 |
+| ✂️ **智能无缝切片** | 基于水平投影法自动分割长截图，精准避免切断文字行。 |
+| 🤖 **多引擎 OCR/VLM** | 支持 Gemini Vision、OpenAI 兼容接口、MinerU API、本地 RapidOCR 以及系统原生 OCR，支持自动降级回退。 |
+| 📊 **表格结构还原** | 智能识别并导出带合并单元格的 Excel 表格。 |
+| 🖼️ **多格式导出** | 支持 Markdown、TXT、HTML、Word (docx)、LaTeX、CSV、Excel 以及 ZIP 打包下载。 |
+| 📡 **SSE 实时进度** | 流式推送识别进度，切片状态实时可见。 |
+| ✏️ **在线编辑** | 可手动修正切片识别结果、删除废弃切片，然后重新合并导出。 |
+| 🔄 **断点续传** | 任务中断后可从中断点继续识别。 |
+| 🌙 **主题切换** | 支持深色/浅色模式。 |
+
+---
+
+### 🚀 快速开始
+
+#### 方式一：下载 EXE（Windows，最简单）
+1. 前往 [Releases 页面](https://github.com/Simple53/OmniExtract/releases)。
+2. 下载 `OmniExtract-lite.exe`（轻量版，约 25MB）或 `OmniExtract-full.exe`（内置离线 OCR，约 105MB）。
+3. 双击运行，浏览器会自动打开 `http://127.0.0.1:8000`。
+
+#### 方式二：🐳 Docker 部署（推荐）
+```bash
+git clone https://github.com/Simple53/OmniExtract.git
+cd OmniExtract
+docker build -t omniextract .
+docker run -d -p 8000:8000 --name omniextract omniextract
+```
+启动后打开浏览器访问 `http://localhost:8000`。
+
+#### 方式三：🐍 本地 Python 运行
+**环境要求：Python 3.10+**
+```bash
+git clone https://github.com/Simple53/OmniExtract.git
+cd OmniExtract
+
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
+
+pip install -r requirements.txt
+python server.py
+```
+或直接双击运行 `start.bat`。
+
+---
+
+### 🏗️ Directory Structure / 项目结构
+```
+OmniExtract/
+├── server.py              # FastAPI 后端主程序 (API & Routing)
+├── scraper.py             # 网页图片抓取与过滤 (DrissionPage/Requests)
+├── slicer.py              # 基于水平投影的智能图像切片 (Pillow/Numpy)
+├── analyzer.py            # 多引擎 OCR/VLM 分析与降级 (Multi-engine Analyzer)
+├── index.html             # 前端单页应用 (Single-page App)
+├── requirements.txt       # Python 依赖清单
+├── Dockerfile             # Docker 容器构建文件
+├── start.bat              # Windows 一键启动脚本
+├── static/
+│   ├── logo.jpg           # 应用图标 (Logo Image)
+│   ├── logo.ico           # Windows EXE 图标 (EXE Icon)
+│   ├── css/all.min.css    # FontAwesome 图标库
+│   ├── js/marked.min.js   # Markdown 渲染库
+│   └── webfonts/          # 字体文件
+└── output/                # 任务输出目录 (Output Directory)
+```
+
+---
+
+### 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+```
+MIT License
+Copyright (c) 2025 Simple53
+```
