@@ -602,41 +602,6 @@ function executeProcessing(branch) {
     const startBtn = document.getElementById("start-btn");
     const urlInput = document.getElementById("target-url").value.trim();
     
-    // 检查 MinerU Token 缺失并提示
-    const activeConfig = currentConfigs[activeConfigName];
-    if (activeConfig && activeConfig.api_type === "MinerU (API)" && (!activeConfig.api_key || !activeConfig.api_key.trim())) {
-        const token = prompt("检测到当前使用的是 MinerU (API) 引擎，但未配置 Token。\n请输入您的 MinerU Token / API Key（留空将自动切换为本地 OCR / 系统原生 OCR）：");
-        if (token && token.trim()) {
-            activeConfig.api_key = token.trim();
-            startBtn.disabled = true;
-            startBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在保存配置...';
-            fetch("/api/config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: activeConfigName, config: activeConfig })
-            })
-            .then(r => r.json())
-            .then(d => {
-                currentConfigs = d.configs;
-                renderConfigList();
-                executeProcessingAfterCheck(branch);
-            })
-            .catch(e => {
-                console.error("保存配置失败:", e);
-                executeProcessingAfterCheck(branch);
-            });
-            return;
-        } else {
-            alert("未输入 Token，系统将自动降级为本地 OCR / 系统原生 OCR 进行识别。");
-        }
-    }
-    executeProcessingAfterCheck(branch);
-}
-
-function executeProcessingAfterCheck(branch) {
-    const startBtn = document.getElementById("start-btn");
-    const urlInput = document.getElementById("target-url").value.trim();
-    
     startBtn.disabled = true;
     startBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 初始化...';
 
@@ -1316,7 +1281,7 @@ function setupTabListeners() {
         tabCompiled.style.fontWeight = "400";
 
         slicesControls.style.display = "flex";
-        renderPreview(); // 调用原有逻辑重新渲染切片预览
+        renderCurrentPreview(); // 调用原有逻辑重新渲染切片预览
     };
 
     tabCompiled.onclick = () => {

@@ -92,14 +92,49 @@ class WebScraper:
         """使用 DrissionPage 驱动本地 Chrome 浏览器加载页面并返回完整的 HTML（解决反爬和 JS 动态加载）"""
         try:
             import time
-            from DrissionPage import ChromiumPage
-            logger.info("DrissionPage detected. Using local Chrome browser to load page...")
-            page = ChromiumPage()
+            from DrissionPage import ChromiumPage, ChromiumOptions
+            
+            logger.info("DrissionPage detected. Using local Chrome browser (headless) to load page...")
+            
+            # 配置无头模式运行，避免显示浏览器窗口打扰用户
+            co = ChromiumOptions()
+            try:
+                co.set_headless(True)
+                co.set_argument('--no-sandbox')
+                co.set_argument('--disable-gpu')
+            except Exception as e:
+                logger.warning(f"Failed to set headless options: {e}")
+
+            page = ChromiumPage(addr_or_opts=co)
             try:
                 page.get(url)
                 # 等待页面加载和渲染
-                time.sleep(4)
+                time.sleep(3)
                 
+                # 针对知乎等网页，自动检测并关闭可能会遮挡/卡住内容的登录弹窗
+                try:
+                    for selector in [
+                        '.Modal-closeButton', 
+                        'button[aria-label="关闭"]', 
+                        '.Modal-wrapper button.close',
+                        '.signFlowModal-closeButton',
+                        'button.Button.Modal-closeButton.Button--plain'
+                    ]:
+                        btn = page.ele(selector, timeout=1.5)
+                        if btn:
+                            btn.click()
+                            logger.info(f"Closed login modal overlay using selector: {selector}")
+                            time.sleep(1)
+                            break
+                except Exception:
+                    pass
+
+                # 解锁 body 滚动条限制（部分遮罩弹窗会锁定 overflow: hidden）
+                try:
+                    page.run_js("document.body.style.overflow = 'auto';")
+                except Exception:
+                    pass
+
                 # 简单向下滚动以加载懒加载的图片
                 try:
                     page.scroll.down(2000)
