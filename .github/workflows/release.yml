@@ -36,10 +36,14 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
           pip install -r requirements.txt
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            pip install ocrmac pyobjc-framework-Vision
+          fi
 
       - name: Build Binary with PyInstaller
         shell: bash
@@ -49,6 +53,18 @@ jobs:
 
           # Build Lite Version (without local OCR)
           pyinstaller --onefile --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} --exclude-module rapidocr_onnxruntime --exclude-module onnxruntime --exclude-module cv2 server.py -n OmniExtract-lite-${{ matrix.platform }}${{ matrix.ext }}
+
+      - name: Package DMG (macOS only)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          mkdir -p dist/full dist/lite
+          cp dist/OmniExtract-full-macos dist/full/
+          cp dist/OmniExtract-lite-macos dist/lite/
+          hdiutil create -volname "OmniExtract-full" -srcfolder dist/full/ -ov -format UDZO dist/OmniExtract-full-macos.dmg
+          hdiutil create -volname "OmniExtract-lite" -srcfolder dist/lite/ -ov -format UDZO dist/OmniExtract-lite-macos.dmg
+          rm -rf dist/full dist/lite
+          rm dist/OmniExtract-full-macos dist/OmniExtract-lite-macos
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
