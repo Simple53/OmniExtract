@@ -101,6 +101,8 @@ class WebScraper:
                 co.set_argument('--headless')
                 co.set_argument('--no-sandbox')
                 co.set_argument('--disable-gpu')
+                # 设置标准的桌面 Chrome User-Agent 绕过无头浏览器检测限制
+                co.set_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             except Exception as e:
                 logger.warning(f"Failed to set headless options: {e}")
 
