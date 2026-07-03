@@ -161,6 +161,8 @@ OmniExtract/
 ├── static/
 │   ├── logo.jpg           # 应用图标 (Logo Image)
 │   ├── logo.ico           # Windows EXE 图标 (EXE Icon)
+│   ├── logo_128x128.ico   # 128x128 尺寸图标 (128x128 Icon)
+│   ├── logo_256x256.ico   # 256x256 尺寸图标 (256x256 Icon)
 │   ├── css/all.min.css    # FontAwesome 图标库
 │   ├── js/marked.min.js   # Markdown 渲染库
 │   └── webfonts/          # 字体文件
