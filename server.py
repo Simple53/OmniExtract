@@ -1431,7 +1431,7 @@ async def upload_file(
             continue
         ext = os.path.splitext(file.filename)[1].lower()
         allowed = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp",
-                   ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx"]
+                   ".pdf", ".ppt", ".pptx"]
         if ext not in allowed:
             raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
 
@@ -2033,8 +2033,30 @@ async def update_compiled_result(task_id: str, payload: Dict[str, str] = Body(..
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n" + "="*60)
-    print("  正在通过 Uvicorn 载入 OmniExtract 服务...")
-    print("  服务地址: http://127.0.0.1:8000")
-    print("="*60 + "\n")
+    
+    cyan = "\033[96m"
+    yellow = "\033[93m"
+    green = "\033[92m"
+    magenta = "\033[95m"
+    reset = "\033[0m"
+
+    banner = f"""
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│   {cyan}██████  ███    ███ ███    ██ ██  ███████ ██   ██ ████████  ██████{reset}    │
+│  {cyan}██    ██ ████  ████ ████   ██ ██  ██       ██ ██     ██    ██    ██{reset}   │
+│  {cyan}██    ██ ██ ████ ██ ██ ██  ██ ██  █████     ███      ██    ██████{reset}    │
+│  {cyan}██    ██ ██  ██  ██ ██  ██ ██ ██  ██       ██ ██     ██    ██   ██{reset}   │
+│   {cyan}██████  ██      ██ ██   ████ ██  ███████ ██   ██    ██    ██    ██{reset}  │
+│                                                                        │
+│                   {green}OmniExtract 万象多模态提取引擎 v1.4{reset}                  │
+│                       {yellow}http://127.0.0.1:8000{reset}                            │
+│                                                                        │
+│             {magenta}🌐 服务端口:{reset}  http://127.0.0.1:8000                      │
+│             {magenta}📂 输出目录:{reset}  data/output                                │
+│             {magenta}🚀 服务框架:{reset}  FastAPI 极速引擎                           │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+"""
+    print(banner)
     uvicorn.run(app, host="0.0.0.0", port=8000)
