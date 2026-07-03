@@ -17,6 +17,7 @@
             --history-bg: #0b0f19;
             --accent-color: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            --logo-text-gradient: linear-gradient(to right, #3b82f6, #60a5fa);
             --text-primary: #f3f4f6;
             --text-secondary: #9ca3af;
             --success-color: #10b981;
@@ -33,6 +34,7 @@
             --card-bg: transparent;
             --card-border: rgba(0, 0, 0, 0.08);
             --history-bg: #f3f4f6;
+            --logo-text-gradient: linear-gradient(to right, #1d4ed8, #2563eb);
             --text-primary: #1f2937;
             --text-secondary: #4b5563;
             --console-bg: transparent;
@@ -503,7 +505,7 @@
 
 <div class="app-container">
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--card-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem;">
-        <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.ico" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> <span style="font-size:1.2rem;font-weight:600;">万象</span></h1>
+        <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.ico" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> <span style="font-size:1.3rem; font-weight:700; background: var(--logo-text-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.015em;">万象 OmniExtract</span></h1>
         <nav class="unified-nav" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
             <button class="nav-item-btn" onclick="scrollToIntro()" title="项目简介"><i class="fa-solid fa-circle-info"></i> <span>简介</span></button>
             <button class="nav-item-btn" onclick="showUsageModal()" title="使用指南"><i class="fa-solid fa-book-open"></i> <span>使用</span></button>
