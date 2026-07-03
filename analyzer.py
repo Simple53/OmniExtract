@@ -400,20 +400,32 @@ class ImageAnalyzer:
         filename = os.path.basename(image_path)
         post_url = f"{base_url}/api/v1/agent/parse/file"
         
-        # 1. 提交文件
-        with open(image_path, "rb") as f:
-            files = {"file": (filename, f, "image/jpeg")}
-            res = requests.post(post_url, files=files, timeout=45, verify=False)
-        
+        # 1. POST JSON 获取上传 URL 和 task_id
+        post_data = {
+            "file_name": filename,
+            "is_ocr": True,
+            "enable_formula": True
+        }
+        headers = {"Content-Type": "application/json"}
+        res = requests.post(post_url, headers=headers, json=post_data, timeout=30, verify=False)
         res.raise_for_status()
         res_json = res.json()
-        task_id = res_json.get("task_id")
-        if not task_id:
-            raise Exception(f"No task_id returned from v1 agent: {res_json}")
+        if res_json.get("code") != 0:
+            raise Exception(f"v1 agent POST failed: {res_json.get('msg')}")
             
-        logger.info(f"MinerU v1 Agent task submitted. Task ID: {task_id}. Polling result...")
+        task_id = res_json["data"]["task_id"]
+        upload_url = res_json["data"]["file_url"]
         
-        # 2. 轮询结果
+        logger.info(f"MinerU v1 Agent task obtained. Task ID: {task_id}. Uploading file binary...")
+        
+        # 2. PUT 上传文件内容
+        with open(image_path, "rb") as f:
+            res_upload = requests.put(upload_url, data=f, timeout=120, verify=False)
+        res_upload.raise_for_status()
+        
+        logger.info(f"MinerU v1 Agent file uploaded. Polling result...")
+        
+        # 3. 轮询结果
         status_url = f"{base_url}/api/v1/agent/parse/{task_id}"
         for _ in range(60):
             time.sleep(3)
@@ -421,11 +433,15 @@ class ImageAnalyzer:
             res_poll.raise_for_status()
             poll_json = res_poll.json()
             
-            status = poll_json.get("status")
-            if status == "success":
-                md_url = poll_json.get("url")
+            if poll_json.get("code") != 0:
+                raise Exception(f"v1 agent polling failed: {poll_json.get('msg')}")
+                
+            data_block = poll_json.get("data", {})
+            state = data_block.get("state")
+            if state == "done":
+                md_url = data_block.get("markdown_url")
                 if not md_url:
-                    raise Exception("v1 agent success but returned no url")
+                    raise Exception("v1 agent done but returned no markdown_url")
                 # 下载 markdown 文件内容
                 res_md = requests.get(md_url, timeout=30, verify=False)
                 res_md.raise_for_status()
@@ -434,10 +450,10 @@ class ImageAnalyzer:
                 res_dict = self._parse_result(text.strip(), output_csv_path)
                 res_dict["source"] = "MinerU v1 Agent API"
                 return res_dict
-            elif status == "failed":
+            elif state == "failed":
                 raise Exception("v1 agent task failed on server side")
             else:
-                # processing
+                # waiting-file, running, processing
                 continue
                 
         raise Exception("v1 agent task poll timeout")
