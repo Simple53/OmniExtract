@@ -10,14 +10,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
-# 图片过滤垃圾关键词（URL、类名、ID、ALT 属性等匹配）
-SKIP_KEYWORDS = frozenset([
-    'icon', 'logo', 'avatar', 'button', 'qr', 'qrcode', 'barcode', 'bg', 'spacer', 
-    'blank', 'loading', 'placeholder', 'pixel', 'tracking', 'ad', 'advertisement', 
-    'banner', 'share', 'header', 'footer', 'sidebar', 'nav', 'sprite', 'emoticon', 
-    'emoji', 'wechat', 'weixin', 'subscribe', 'follow', 'gzh', 'mpweixin', 'scan', 
-    'pay', 'alipay', 'reward', 'donate', 'zan', 'app-download', 'client'
-])
+# 垃圾图片过滤正则模式（采用 \b 单词边界以避免像 "ad" 匹配到 "loading" 或 "download" 等子串）
+SKIP_PATTERN = re.compile(
+    r'\b(icon|logo|avatar|button|qr|qrcode|barcode|bg|spacer|blank|pixel|tracking|ad|advertisement|banner|share|header|footer|sidebar|nav|sprite|emoticon|emoji|wechat|weixin|subscribe|follow|gzh|mpweixin|scan|pay|alipay|reward|donate|zan|app-download|client)\b',
+    re.I
+)
 SKIP_EXTENSIONS = frozenset(['.gif'])  # 通常 GIF 是动画/装饰图标
 
 
@@ -254,8 +251,7 @@ class WebScraper:
         for attr in ['data-original', 'data-actualsrc', 'data-src', 'original', 'data-lazy-src', 'src']:
             val = img.get(attr)
             if val and not val.strip().startswith("data:image"):
-                val_lower = val.lower()
-                if not any(kw in val_lower for kw in SKIP_KEYWORDS):
+                if not SKIP_PATTERN.search(val):
                     return val.strip()
 
         # 兜底：取 src
@@ -269,19 +265,17 @@ class WebScraper:
                 continue
             # BeautifulSoup 针对 class 属性通常解析为 list
             val_str = " ".join(val) if isinstance(val, list) else str(val)
-            val_lower = val_str.lower()
-            if any(kw in val_lower for kw in SKIP_KEYWORDS):
+            if SKIP_PATTERN.search(val_str):
                 logger.info(f"Skipping image tag due to {attr} attribute: '{val_str}'")
                 return True
         return False
 
     def _should_skip_url(self, url: str) -> bool:
         """判断是否应该跳过该 URL"""
-        url_lower = url.lower()
-        if any(kw in url_lower for kw in SKIP_KEYWORDS):
+        if SKIP_PATTERN.search(url):
             return True
         # 跳过 data URI
-        if url_lower.startswith('data:'):
+        if url.lower().startswith('data:'):
             return True
         return False
 
