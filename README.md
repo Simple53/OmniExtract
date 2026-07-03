@@ -166,13 +166,3 @@ OmniExtract/
 │   └── webfonts/          # 字体文件
 └── output/                # 任务输出目录 (Output Directory)
 ```
-
----
-
-### 📜 License
-
-This project is licensed under the [MIT License](LICENSE).
-```
-MIT License
-Copyright (c) 2025 Simple53
-```
