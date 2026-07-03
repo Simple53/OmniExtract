@@ -510,6 +510,7 @@
             <button class="nav-item-btn" id="theme-toggle-btn" title="切换主题"><i class="fa-solid fa-moon" id="theme-icon"></i> <span>主题</span></button>
             <button class="nav-item-btn" id="toggle-sidebar-btn" title="API配置"><i class="fa-solid fa-sliders"></i> <span id="toggle-sidebar-text">隐藏配置</span></button>
             <button class="nav-item-btn" onclick="toggleHistoryDrawer()" title="历史记录"><i class="fa-solid fa-history"></i> <span>历史记录</span><span id="history-badge" class="badge-accent" style="display:none; margin-left: 4px;">0</span></button>
+            <a class="nav-item-btn" href="https://github.com/Simple53/OmniExtract" target="_blank" title="GitHub 仓库" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-brands fa-github" style="font-size: 1.05rem;"></i></a>
         </nav>
     </header>
 
@@ -691,11 +692,12 @@
             <button class="nav-item-btn" onclick="closeUsageModal()" style="padding:0.25rem 0.5rem; border-radius:4px;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div style="font-size:0.85rem; line-height:1.6; display:flex; flex-direction:column; gap:0.75rem; text-align:left;">
-            <p><strong>1. 添加待处理项目：</strong> 您可以点击选择文件、直接拖入本地文件（图片、PDF、Word等），也可以在链接输入框中输入待解析的网页 URL。甚至可以直接粘贴截图（Ctrl+V）！</p>
-            <p><strong>2. 选择识别引擎：</strong> 在右侧配置面板中选择适合的 API 引擎。如配置有 MinerU Token，可选用云端大模型；离线时可无缝降级选用系统原生 OCR 引擎，免装任何重型包。</p>
-            <p><strong>3. 设定解析格式：</strong> 通过勾选“表格”、“纯文本”或“数学公式”等偏好设定，精细控制文档内容的渲染形式。</p>
-            <p><strong>4. 开始并监控提取：</strong> 点击“开始提取”按键，系统将显示每张切片的实时提取进度。如果需要，您可以通过“暂停”、“继续”或“终止”按键进行灵活的流程控制。</p>
-            <p><strong>5. 浏览与下载结果：</strong> 解析完成后，您可以在“切片明细”中对比原图和提取文字，或在“合成结果预览”里阅读完整渲染排版的文档，并一键打包下载为 Word、PDF、Markdown 或 Excel 表格文件。</p>
+            <p><strong>1. 添加待处理项目：</strong> 您可以点击选择文件、直接拖入本地文件（图片、PDF、PPT 等），也可以在链接输入框中输入待解析的网页 URL。甚至可以直接粘贴截图（Ctrl+V）！</p>
+            <p><strong>2. 申请并配置 MinerU API：</strong> 访问 <a href="https://mineru.net/" target="_blank" style="color:var(--accent-color);text-decoration:underline;">MinerU 官网</a> 注册/登录，点击右上角 <strong>个人中心 —— 秘钥管理 —— 添加秘钥</strong> 即可获取您的 API Key。将其复制并填入右侧配置面板中的 <strong>MinerU Token</strong> 输入框中并保存。</p>
+            <p><strong>3. 选择识别引擎：</strong> 在右侧配置面板中选择适合的 API 引擎。如已配置 MinerU Token，建议选用其强大的云端多模态大模型；离线时系统可自动无缝降级选用本地原生 OCR 引擎。</p>
+            <p><strong>4. 设定解析格式：</strong> 通过勾选“表格”、“纯文本”或“数学公式”等偏好设定，精细控制文档内容的渲染形式。</p>
+            <p><strong>5. 开始并监控提取：</strong> 点击“开始提取”按键，系统将显示每张切片的实时进度。如有需要，运行中可随时点击“暂停”、“继续”或“终止”。</p>
+            <p><strong>6. 浏览与下载结果：</strong> 解析完成后，您可以在“切片明细”中对比并保存编辑，或在“合成结果预览”里阅读 Markdown 并在右上方直接编辑，一键打包下载为 Word、PDF、Markdown 或 Excel 表格文件。</p>
         </div>
     </div>
 </div>

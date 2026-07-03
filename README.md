@@ -78,10 +78,11 @@ Or double-click `start.bat` on Windows.
 
 ### 📖 User Guide
 
-1. **Configure API Engine**: Click the **"Settings"** icon on the top right. Select your preferred engine (Gemini, OpenAI, MinerU, or Local/System OCR).
+1. **Configure API Engine**: Select your preferred engine in the right configuration panel (Gemini, OpenAI, MinerU, or Local/System OCR).
+   - **For MinerU Key**: You can visit [MinerU Website](https://mineru.net/), go to the top right **Personal Center -> Key Management -> Add Key** to get a free API Key, and enter it into the **MinerU Token** input field.
 2. **Extract Web Pages**: Paste the URL into the input field and click "Start Extraction".
-3. **Extract Local Files**: Drag and drop images, PDFs, Word, or Excel files into the drop area, or paste images directly via clipboard (Ctrl+V).
-4. **Edit & Output**: Review slice details, edit markdown, delete unwanted parts, and click "Merge and Generate" to export.
+3. **Extract Local Files**: Drag and drop images, PDFs, or PPT files into the drop area, or paste images directly via clipboard (Ctrl+V).
+4. **Edit & Output**: Review slice details, edit markdown, delete unwanted parts, and export to Word, PDF, LaTeX, Excel, etc.
 
 ---
 
@@ -133,6 +134,16 @@ pip install -r requirements.txt
 python server.py
 ```
 或直接双击运行 `start.bat`。
+
+---
+
+### 📖 使用指南
+
+1. **配置 API 引擎**：在右侧 **“隐藏配置/显示配置”** 面板中选择适合的 OCR 或 VLM 引擎（支持 Gemini、OpenAI 兼容接口、MinerU 或本地原生 OCR）。
+   - **申请 MinerU Key**：您可以访问 [MinerU 官网](https://mineru.net/)，在右上角 **“个人中心” —— “秘钥管理” —— “添加秘钥”** 免费申请您的 API Key，并配置填入面板中的 **MinerU Token** 输入框。
+2. **提取网页内容**：输入目标网页 URL，点击“开始提取”按键，系统会自动抓取并过滤正文图片、执行智能无缝切片并流式推送识别进度。
+3. **提取本地文件**：支持点击选择或直接向中心区域拖入本地文件（支持图片、PDF、PPT 等），或者通过剪贴板（Ctrl+V）直接粘贴截图加入提取队列。
+4. **人工校对与保存**：在“切片明细”中对比原图和识别文字进行任意局部保存，支持在“合成结果预览”中对完整的排版 Markdown 进行实时编辑与保存，最后打包导出为 Word、PDF、Markdown 或 Excel 等。
 
 ---
 
