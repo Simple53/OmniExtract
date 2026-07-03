@@ -628,33 +628,24 @@ def save_df_to_excel_with_merged_cells(df: pd.DataFrame, file_or_buf, sheet_name
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = thin_border
 
-    # 3. 合并每一列中相邻且相同的垂直单元格 (从数据行第二行开始)
-    for col in range(1, num_cols + 1):
-        start_row = 2
-        while start_row <= num_rows:
-            val = ws.cell(row=start_row, column=col).value
-            if val is None or str(val).strip() == "":
-                start_row += 1
-                continue
+    # 3. 垂直合并相邻且相同的单元格已关闭（根据用户要求，一般只做水平合并）
 
-            end_row = start_row
-            while end_row + 1 <= num_rows and ws.cell(row=end_row + 1, column=col).value == val:
-                end_row += 1
+    def is_numeric(v) -> bool:
+        if v is None:
+            return False
+        s = str(v).strip()
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
 
-            if end_row > start_row:
-                ws.merge_cells(start_row=start_row, start_column=col, end_row=end_row, end_column=col)
-                # 合并后的主单元格设置居中对齐
-                ws.cell(row=start_row, column=col).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                start_row = end_row + 1
-            else:
-                start_row += 1
-
-    # 4. 合并每一行中相邻且相同的水平单元格 (数据行水平合并)
+    # 4. 合并每一行中相邻且相同的水平单元格 (数据行水平合并，跳过数字/分数以防错合并)
     for row in range(2, num_rows + 1):
         start_col = 1
         while start_col <= num_cols:
             val = ws.cell(row=row, column=start_col).value
-            if val is None or str(val).strip() == "":
+            if val is None or str(val).strip() == "" or is_numeric(val):
                 start_col += 1
                 continue
 
@@ -1643,15 +1634,96 @@ async def stop_task(task_id: str) -> Dict[str, Any]:
 
 @app.get("/api/history")
 async def get_history() -> List[Dict[str, Any]]:
-    """获取所有历史解析成功的任务列表"""
+    """获取所有历史解析成功的任务列表，包含动态扫描的文件夹结果和正在进行的任务"""
     history_file = os.path.join(DATA_DIR, "task_history.json")
+    history_list = []
     if os.path.exists(history_file):
         try:
             with open(history_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                history_list = json.load(f)
         except Exception:
             pass
-    return []
+
+    for item in history_list:
+        if "status" not in item:
+            item["status"] = "completed"
+
+    scanned_items = []
+    if os.path.exists(OUTPUT_DIR):
+        for folder_name in os.listdir(OUTPUT_DIR):
+            folder_path = os.path.join(OUTPUT_DIR, folder_name)
+            if os.path.isdir(folder_path):
+                image_paths_file = os.path.join(folder_path, "image_paths.json")
+                if os.path.exists(image_paths_file):
+                    exists = False
+                    for item in history_list:
+                        if item.get("task_id") == folder_name or os.path.basename(item.get("output_dir", "")) == folder_name:
+                            exists = True
+                            break
+                    if not exists:
+                        is_upload = folder_name.startswith("upload_")
+                        ts_str = folder_name.replace("upload_", "")
+                        try:
+                            if is_upload:
+                                ts = float(ts_str)
+                                if ts > 1000000000000:
+                                    ts /= 1000.0
+                                dt_obj = datetime.datetime.fromtimestamp(ts)
+                            else:
+                                dt_obj = datetime.datetime.strptime(folder_name, "%Y%m%d_%H%M%S")
+                            dt = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+                        except Exception:
+                            try:
+                                mtime = os.path.getmtime(image_paths_file)
+                                dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                            except Exception:
+                                dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        task_type = "upload" if is_upload else "url"
+                        name = "本地文件解析" if is_upload else "网页链接解析"
+                        
+                        scanned_items.append({
+                            "task_id": folder_name,
+                            "name": name,
+                            "type": task_type,
+                            "output_dir": folder_path,
+                            "timestamp": dt,
+                            "status": "completed"
+                        })
+    
+    if scanned_items:
+        history_list.extend(scanned_items)
+        try:
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(history_list, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            logger.error(f"Failed to auto-sync task history: {e}")
+
+    active_items = []
+    for task_id, task in tasks_db.items():
+        status = task.get("status", "pending")
+        if status in ["running", "paused", "pending"]:
+            if not any(item.get("task_id") == task_id for item in history_list):
+                is_upload = task_id.startswith("upload_") or "file_path" in task or "file_paths" in task
+                name = task.get("merged_url") or (task.get("file_paths")[0] if task.get("file_paths") else "未知文件")
+                if len(name) > 60:
+                    name = name[:57] + "..."
+                
+                task_type = "upload" if is_upload else "url"
+                display_name = f"[进行中] {name}" if status == "running" else f"[暂停] {name}"
+                
+                dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                active_items.append({
+                    "task_id": task_id,
+                    "name": display_name,
+                    "type": task_type,
+                    "output_dir": task.get("output_dir", ""),
+                    "timestamp": dt,
+                    "status": status
+                })
+                
+    return history_list + active_items
 
 
 @app.delete("/api/history/{task_id}")
@@ -1720,6 +1792,44 @@ async def load_historic_task(task_id: str, payload: Dict[str, str]) -> Dict[str,
             except Exception:
                 pass
                 
+    # Load final compiled files if they exist on disk
+    final_md_file = os.path.join(output_dir, "final_output.md")
+    final_txt_file = os.path.join(output_dir, "final_output.txt")
+    final_csv_file = os.path.join(output_dir, "final_output.csv")
+    final_xlsx_file = os.path.join(output_dir, "final_output.xlsx")
+    
+    if os.path.exists(final_md_file):
+        try:
+            with open(final_md_file, "r", encoding="utf-8") as f:
+                task["final_md"] = f.read()
+        except Exception:
+            task["final_md"] = ""
+    else:
+        task["final_md"] = ""
+        
+    if os.path.exists(final_txt_file):
+        try:
+            with open(final_txt_file, "r", encoding="utf-8") as f:
+                task["final_txt"] = f.read()
+        except Exception:
+            task["final_txt"] = ""
+    else:
+        task["final_txt"] = ""
+        
+    if os.path.exists(final_csv_file):
+        try:
+            with open(final_csv_file, "rb") as f:
+                task["csv_bytes"] = f.read()
+        except Exception:
+            pass
+            
+    if os.path.exists(final_xlsx_file):
+        try:
+            with open(final_xlsx_file, "rb") as f:
+                task["excel_bytes"] = f.read()
+        except Exception:
+            pass
+            
     tasks_db[task_id] = task
     tasks_events[task_id] = asyncio.Event()
     return {"status": "success", "task_id": task_id}
@@ -1805,7 +1915,7 @@ async def update_result(task_id: str, index: int, data: Dict[str, Any] = Body(..
     forced_type = data.get("type")
     img_path, res_data = task["results"][index]
 
-    if forced_type in ["text", "table", "image", "error"]:
+    if forced_type in ["text", "table", "image", "error", "ignore"]:
         new_type = forced_type
     else:
         if new_content.strip() == "RETAIN_IMAGE":
@@ -1823,6 +1933,12 @@ async def update_result(task_id: str, index: int, data: Dict[str, Any] = Body(..
         out_md = os.path.join(output_dir, f"slice_{index + 1}.md")
         with open(out_md, "w", encoding="utf-8") as f:
             f.write(new_content)
+
+    # Re-compile outputs to update ZIP and exports on slice edit/delete
+    try:
+        compile_task_outputs(task_id)
+    except Exception as e:
+        logger.error(f"Error recompiling outputs after result update: {e}")
 
     return {"status": "success"}
 
@@ -1890,6 +2006,27 @@ async def recompile_task(task_id: str) -> Dict[str, Any]:
     task = tasks_db[task_id]
     has_table = task["csv_bytes"] is not None
     return {"status": "success", "has_table": has_table}
+
+
+@app.put("/api/compiled_result/{task_id}")
+async def update_compiled_result(task_id: str, payload: Dict[str, str] = Body(...)) -> Dict[str, Any]:
+    """更新最终合并的 Markdown 内容并重新生成本地合并文件"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    task = tasks_db[task_id]
+    new_md = payload.get("final_md", "")
+    task["final_md"] = new_md
+    
+    # Clean basic MD formats for plain text output
+    task["final_txt"] = new_md.replace("#", "").replace("*", "").replace("`", "")
+    
+    # Save outputs to disk (re-generates docx, html, tex, zip etc)
+    output_dir = task.get("output_dir")
+    if output_dir and os.path.exists(output_dir):
+        _save_outputs_to_disk(task, output_dir)
+        
+    return {"status": "success"}
 
 
 # ── 启动入口 ─────────────────────────────────────────────────────────────────

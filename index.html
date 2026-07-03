@@ -12,8 +12,9 @@
     <style>
         :root {
             --bg-color: #0b0f19;
-            --card-bg: rgba(20, 26, 45, 0.65);
-            --card-border: transparent;
+            --card-bg: transparent;
+            --card-border: rgba(255, 255, 255, 0.08);
+            --history-bg: #0b0f19;
             --accent-color: #3b82f6;
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             --text-primary: #f3f4f6;
@@ -21,23 +22,24 @@
             --success-color: #10b981;
             --error-color: #ef4444;
             --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --console-bg: rgba(0,0,0,0.4);
+            --console-bg: transparent;
             --console-text: #38bdf8;
-            --form-control-bg: rgba(0,0,0,0.2);
-            --dropzone-bg: rgba(0,0,0,0.15);
-            --preview-bg: rgba(0,0,0,0.1);
+            --form-control-bg: transparent;
+            --dropzone-bg: transparent;
+            --preview-bg: transparent;
         }
         body.theme-light {
             --bg-color: #f3f4f6;
-            --card-bg: rgba(255, 255, 255, 0.85);
-            --card-border: transparent;
+            --card-bg: transparent;
+            --card-border: rgba(0, 0, 0, 0.08);
+            --history-bg: #f3f4f6;
             --text-primary: #1f2937;
             --text-secondary: #4b5563;
-            --console-bg: rgba(255,255,255,0.9);
+            --console-bg: transparent;
             --console-text: #0284c7;
-            --form-control-bg: rgba(0,0,0,0.05);
-            --dropzone-bg: rgba(255,255,255,0.6);
-            --preview-bg: rgba(0,0,0,0.03);
+            --form-control-bg: transparent;
+            --dropzone-bg: transparent;
+            --preview-bg: transparent;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -57,16 +59,19 @@
             -webkit-background-clip: text !important;
             -webkit-text-fill-color: transparent !important;
         }
-        .app-container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; display: grid; grid-template-columns: 1fr 300px; gap: 2rem; transition: all 0.3s ease; }
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 0.75rem 1.5rem 2rem 1.5rem; display: grid; grid-template-columns: 1fr 300px; gap: 2rem; transition: all 0.3s ease; }
+        .app-container.history-visible { max-width: 1500px; grid-template-columns: var(--history-width, 220px) 1fr 300px; padding-left: 0; }
         .app-container.sidebar-hidden { grid-template-columns: 1fr; }
+        .app-container.history-visible.sidebar-hidden { grid-template-columns: var(--history-width, 220px) 1fr; }
         .app-container.sidebar-hidden .sidebar { display: none; }
         @media (max-width: 900px) { .app-container { grid-template-columns: 1fr; } }
 
         header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--card-border); }
+        .app-container.history-visible header { grid-column: 2 / -1; }
         header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(to right, #fff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.75rem; }
         header p { color: var(--text-secondary); font-size: 0.95rem; }
 
-        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: all 0.3s; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.5rem; transition: all 0.3s; }
         .glass-card:hover { border-color: rgba(255,255,255,0.15); }
 
         .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -329,43 +334,55 @@
             line-height: 1;
         }
 
-        /* History Drawer Style (Left Side, Magnetic & Pin Support) */
+        /* History Drawer Style (Integrated Grid / Floating Sidebar with Drag Resize) */
         .history-drawer {
             position: fixed;
             top: 0;
-            left: -292px; /* Pullout detect zone (8px visible on left) */
-            width: 300px;
-            height: 100%;
-            background: rgba(20, 26, 45, 0.95);
-            backdrop-filter: blur(20px);
+            left: calc(-1 * var(--history-width, 220px));
+            width: var(--history-width, 220px);
+            height: 100vh;
+            background: var(--bg-color);
             border-right: 1px solid var(--card-border);
             z-index: 10000;
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), position 0.1s, width 0.1s;
-            padding: 1.5rem 1rem 1.5rem 1.5rem;
+            padding: 1.2rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            transition: left 0.3s ease;
             box-shadow: none !important;
         }
-        
-        /* Hover pullout (magnetic fold) when not pinned */
-        .app-container:not(.history-pinned) .history-drawer:hover,
-        .app-container:not(.history-pinned) .history-drawer.show {
-            left: 0 !important;
+        .history-drawer.show {
+            left: 0;
+        }
+        .history-drawer .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            z-index: 100;
+        }
+        .history-drawer .resizer:hover {
+            background: var(--accent-color);
         }
 
-        /* Pinned State Layout on Left */
-        .app-container.history-pinned .history-drawer {
+        /* Pinned Grid Column State */
+        .app-container.history-visible.history-pinned .history-drawer {
             position: sticky;
             top: 0;
             left: 0 !important;
-            height: calc(100vh - 3rem);
-            width: 280px;
-            background: var(--card-bg);
-            border-radius: 12px;
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            height: 100vh;
+            width: 100%;
+            margin-top: -0.75rem;
+            margin-bottom: -2rem;
+            border-radius: 0 12px 12px 0;
+            background: var(--history-bg);
+            border-right: none;
             z-index: 10;
-            padding: 1.2rem;
-            border-right: 1px solid var(--card-border);
+            display: flex;
             transition: none;
         }
 
@@ -459,8 +476,8 @@
         
         /* Light Theme Overrides */
         body.theme-light .history-drawer {
-            background: rgba(248, 250, 252, 0.95);
-            border-right-color: rgba(0, 0, 0, 0.05);
+            background: var(--history-bg);
+            border-right-color: transparent;
         }
         body.theme-light .usage-modal-content {
             background: rgba(248, 250, 252, 0.95);
@@ -471,6 +488,10 @@
         body.theme-light .history-item:hover {
             background: rgba(0, 0, 0, 0.05);
         }
+        body.theme-light .badge-text { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
+        body.theme-light .badge-table { background: rgba(16, 185, 129, 0.1); color: #047857; }
+        body.theme-light .badge-image { background: rgba(139, 92, 246, 0.1); color: #6d28d9; }
+        body.theme-light .badge-error { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
     </style>
 </head>
 <body>
@@ -481,8 +502,8 @@
 </div>
 
 <div class="app-container">
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--card-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-        <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.ico" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> OmniExtract <span style="font-size:1.1rem;font-weight:400;opacity:0.7;">万象</span></h1>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--card-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem;">
+        <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.ico" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> <span style="font-size:1.2rem;font-weight:600;">万象</span></h1>
         <nav class="unified-nav" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
             <button class="nav-item-btn" onclick="scrollToIntro()" title="项目简介"><i class="fa-solid fa-circle-info"></i> <span>简介</span></button>
             <button class="nav-item-btn" onclick="showUsageModal()" title="使用指南"><i class="fa-solid fa-book-open"></i> <span>使用</span></button>
@@ -493,10 +514,10 @@
     </header>
 
     <div id="history-drawer" class="history-drawer">
+        <div class="resizer" id="history-resizer"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border); padding-bottom:0.75rem; gap: 0.5rem;">
-            <span style="font-size:1.1rem; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem; flex: 1;"><i class="fa-solid fa-history" style="color:var(--accent-color);"></i> 历史记录</span>
-            <button class="nav-item-btn" id="pin-history-btn" onclick="togglePinHistory()" style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem;" title="固定到左侧"><i class="fa-solid fa-thumbtack"></i> <span id="pin-history-text">固定</span></button>
-            <button class="nav-item-btn" id="close-history-btn" onclick="toggleHistoryDrawer()" style="padding:0.25rem 0.5rem; border-radius:4px;" title="关闭"><i class="fa-solid fa-xmark"></i></button>
+            <div style="flex: 1;"></div>
+            <button class="nav-item-btn" id="pin-history-btn" onclick="togglePinHistory()" style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem;" title="固定到左侧"><i class="fa-solid fa-thumbtack"></i></button>
         </div>
         <div id="history-list" class="history-list-container">
             <!-- History items will be dynamically injected here -->
@@ -655,7 +676,7 @@
         </div>
     </aside>
     <!-- Bottom Introduction Section -->
-    <footer class="glass-card" style="grid-column: 1 / -1; margin-top: 1.5rem; padding: 1.5rem; text-align: center; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;" id="intro-section">
+    <footer style="grid-column: 1 / -1; margin-top: 3rem; padding: 1.5rem 0 0 0; text-align: center; border-top: 1px solid var(--card-border); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 100%;" id="intro-section">
         <p style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0;">基于 FastAPI 的极速网页多模态提取引擎</p>
         <p style="font-size: 0.8rem; color: var(--text-secondary); max-width: 650px; margin: 0; line-height: 1.5; text-align: center;">
             OmniExtract 万象支持对网页进行高保真双重解析，具备智能切片聚类、多模态文字与表格提取。在离线环境下支持调用本地原生 OCR（Windows Native OCR、macOS Vision OCR）及本地 RapidOCR 模型，在联网环境下无缝降级接入 MinerU 云端多模态大模型。
@@ -706,7 +727,7 @@
 </div>
 
 <script>
-let currentConfigs = {}, activeConfigName = "", currentTaskId = "", sseSource = null;
+let currentConfigs = {}, activeConfigName = "", currentTaskId = "", sseSource = null, currentCompiledMd = "";
 let allResults = {}, allImagePaths = [], currentPreviewIdx = 0, totalSlices = 0;
 let currentProcessing = new Set();
 let taskStatus = "";
@@ -930,16 +951,28 @@ document.addEventListener("DOMContentLoaded", () => {
     setupSidebarToggle();
     setupMergeListener();
     setupTabListeners();
-    
-    if (localStorage.getItem("history-pinned") === "true") {
-        const container = document.querySelector(".app-container");
-        if (container) container.classList.add("history-pinned");
-        const pinText = document.getElementById("pin-history-text");
-        const pinBtn = document.getElementById("pin-history-btn");
-        const closeBtn = document.getElementById("close-history-btn");
-        if (pinText) pinText.innerText = "取消固定";
-        if (pinBtn) pinBtn.style.color = "var(--accent-color)";
-        if (closeBtn) closeBtn.style.display = "none";
+    // Restore history width
+    const savedWidth = localStorage.getItem("history-width") || "220px";
+    const container = document.querySelector(".app-container");
+    const drawer = document.getElementById("history-drawer");
+    if (container) container.style.setProperty('--history-width', savedWidth);
+    if (drawer) drawer.style.width = savedWidth;
+
+    setupHistoryResizer();
+    setupHistoryMouseleave();
+
+    if (localStorage.getItem("history-visible") === "true") {
+        if (container) container.classList.add("history-visible");
+        if (localStorage.getItem("history-pinned") === "true") {
+            if (container) container.classList.add("history-pinned");
+            const pinBtn = document.getElementById("pin-history-btn");
+            if (pinBtn) {
+                pinBtn.style.color = "var(--accent-color)";
+                pinBtn.title = "取消固定";
+                const icon = pinBtn.querySelector("i");
+                if (icon) icon.className = "fa-solid fa-thumbtack fa-rotate-90";
+            }
+        }
     }
     fetchHistory();
 });
@@ -1567,16 +1600,25 @@ function renderCompiledPreview() {
         })
         .then(mdText => {
             if (activePreviewTab !== "compiled") return; // 避免切回后回调延迟覆盖
+            currentCompiledMd = mdText;
             
             const htmlContent = typeof marked !== 'undefined' ? marked.parse(mdText) : mdText.replace(/\n/g, '<br>');
             container.innerHTML = `
                 <div class="glass-card preview-compiled-doc" style="text-align:left; padding:2rem; max-height:800px; overflow-y:auto; color:var(--text-primary); line-height:1.6; border: 1px solid var(--card-border); background: var(--console-bg); border-radius: 12px;">
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 0.5rem;">
                         <span><i class="fa-solid fa-file-invoice"></i> 合成结果（Markdown 在线排版预览）</span>
-                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 4px;" onclick="navigator.clipboard.writeText(document.querySelector('.preview-compiled-doc-body').innerText).then(() => alert('文本成果已成功复制到剪贴板！'))"><i class="fa-solid fa-copy"></i> 复制全文</button>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button class="btn btn-secondary" id="edit-compiled-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 4px;" onclick="toggleEditCompiled()"><i class="fa-solid fa-pen-to-square"></i> 编辑</button>
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 4px;" onclick="navigator.clipboard.writeText(currentCompiledMd).then(() => alert('Markdown 源码已成功复制到剪贴板！'))"><i class="fa-solid fa-copy"></i> 复制源码</button>
+                        </div>
                     </div>
-                    <div class="preview-compiled-doc-body" style="font-size: 0.9rem;">
+                    <div class="preview-compiled-doc-body" id="compiled-doc-body" style="font-size: 0.9rem;">
                         ${htmlContent}
+                    </div>
+                    <textarea class="edit-area" id="compiled-doc-editor" style="display:none; min-height:450px; width:100%; font-family:monospace; font-size:0.85rem; line-height:1.5; color:var(--text-primary); background:rgba(0,0,0,0.25); border:1px solid var(--card-border); border-radius:8px; padding:0.75rem; outline:none; resize:vertical;"></textarea>
+                    <div id="compiled-edit-actions" style="display:none; gap:0.5rem; margin-top:1rem; justify-content:flex-end;">
+                        <button class="btn btn-secondary" onclick="cancelEditCompiled()"><i class="fa-solid fa-xmark"></i> 取消</button>
+                        <button class="btn btn-primary" onclick="saveCompiledResult()"><i class="fa-solid fa-floppy-disk"></i> 保存修改</button>
                     </div>
                 </div>
             `;
@@ -1586,6 +1628,71 @@ function renderCompiledPreview() {
             container.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--error-color);"><i class="fa-solid fa-circle-xmark" style="font-size: 2rem; margin-bottom: 1rem;"></i><br>加载成果预览失败: ${err.message}</div>`;
         });
 }
+
+window.toggleEditCompiled = function() {
+    const body = document.getElementById("compiled-doc-body");
+    const editor = document.getElementById("compiled-doc-editor");
+    const actions = document.getElementById("compiled-edit-actions");
+    const editBtn = document.getElementById("edit-compiled-btn");
+    
+    if (editor.style.display === "none") {
+        body.style.display = "none";
+        editor.value = currentCompiledMd;
+        editor.style.display = "block";
+        actions.style.display = "flex";
+        editBtn.style.display = "none";
+    }
+};
+
+window.cancelEditCompiled = function() {
+    const body = document.getElementById("compiled-doc-body");
+    const editor = document.getElementById("compiled-doc-editor");
+    const actions = document.getElementById("compiled-edit-actions");
+    const editBtn = document.getElementById("edit-compiled-btn");
+    
+    body.style.display = "block";
+    editor.style.display = "none";
+    actions.style.display = "none";
+    editBtn.style.display = "inline-flex";
+};
+
+window.saveCompiledResult = function() {
+    if (!currentTaskId) return;
+    const editor = document.getElementById("compiled-doc-editor");
+    if (!editor) return;
+    const newMd = editor.value;
+    
+    const saveBtn = document.querySelector("#compiled-edit-actions .btn-primary");
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 保存中...';
+    
+    fetch(`/api/compiled_result/${currentTaskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ final_md: newMd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 保存修改';
+        if (data.status === "success") {
+            currentCompiledMd = newMd;
+            const body = document.getElementById("compiled-doc-body");
+            if (body) {
+                body.innerHTML = typeof marked !== 'undefined' ? marked.parse(newMd) : newMd.replace(/\n/g, '<br>');
+            }
+            cancelEditCompiled();
+            alert("合成结果已成功保存，所有格式的下载文件已自动更新！");
+        } else {
+            alert("保存失败，请稍后重试。");
+        }
+    })
+    .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 保存修改';
+        alert("保存失败: " + err.message);
+    });
+};
 
 function autoMergeTask(taskId) {
     const btn = document.getElementById("merge-btn");
@@ -1846,41 +1953,94 @@ window.closeUsageModal = function() {
 /* History Record Functions */
 window.toggleHistoryDrawer = function() {
     const container = document.querySelector(".app-container");
-    if (container.classList.contains("history-pinned")) {
-        togglePinHistory();
-        return;
-    }
     const drawer = document.getElementById("history-drawer");
-    drawer.classList.toggle("show");
-    if (drawer.classList.contains("show")) {
-        fetchHistory();
+    if (!container || !drawer) return;
+    
+    if (container.classList.contains("history-pinned")) {
+        const isVisible = container.classList.toggle("history-visible");
+        localStorage.setItem("history-visible", isVisible ? "true" : "false");
+        if (isVisible) fetchHistory();
+    } else {
+        const isShow = drawer.classList.toggle("show");
+        if (isShow) fetchHistory();
     }
 };
 
 window.togglePinHistory = function() {
     const container = document.querySelector(".app-container");
-    const isPinned = container.classList.toggle("history-pinned");
+    const drawer = document.getElementById("history-drawer");
+    if (!container || !drawer) return;
     
-    // Update local storage
+    const isPinned = container.classList.toggle("history-pinned");
     localStorage.setItem("history-pinned", isPinned ? "true" : "false");
     
-    // Update button text / icon
-    const pinText = document.getElementById("pin-history-text");
     const pinBtn = document.getElementById("pin-history-btn");
-    const closeBtn = document.getElementById("close-history-btn");
     
     if (isPinned) {
-        if (pinText) pinText.innerText = "取消固定";
-        if (pinBtn) pinBtn.style.color = "var(--accent-color)";
-        if (closeBtn) closeBtn.style.display = "none";
-        document.getElementById("history-drawer").classList.remove("show");
+        container.classList.add("history-visible");
+        localStorage.setItem("history-visible", "true");
+        drawer.classList.remove("show");
+        
+        if (pinBtn) {
+            pinBtn.style.color = "var(--accent-color)";
+            pinBtn.title = "取消固定";
+            const icon = pinBtn.querySelector("i");
+            if (icon) icon.className = "fa-solid fa-thumbtack fa-rotate-90";
+        }
         fetchHistory();
     } else {
-        if (pinText) pinText.innerText = "固定";
-        if (pinBtn) pinBtn.style.color = "";
-        if (closeBtn) closeBtn.style.display = "inline-flex";
+        container.classList.remove("history-visible");
+        localStorage.setItem("history-visible", "false");
+        drawer.classList.add("show");
+        
+        if (pinBtn) {
+            pinBtn.style.color = "";
+            pinBtn.title = "固定到左侧";
+            const icon = pinBtn.querySelector("i");
+            if (icon) icon.className = "fa-solid fa-thumbtack";
+        }
     }
 };
+
+function setupHistoryResizer() {
+    const resizer = document.getElementById("history-resizer");
+    const drawer = document.getElementById("history-drawer");
+    const container = document.querySelector(".app-container");
+    if (!resizer || !drawer || !container) return;
+    
+    resizer.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        document.addEventListener("mousemove", resize);
+        document.addEventListener("mouseup", stopResize);
+    });
+    
+    function resize(e) {
+        let newWidth = e.clientX;
+        if (newWidth < 150) newWidth = 150;
+        if (newWidth > 450) newWidth = 450;
+        
+        container.style.setProperty('--history-width', `${newWidth}px`);
+        drawer.style.width = `${newWidth}px`;
+        localStorage.setItem("history-width", `${newWidth}px`);
+    }
+    
+    function stopResize() {
+        document.removeEventListener("mousemove", resize);
+        document.removeEventListener("mouseup", stopResize);
+    }
+}
+
+function setupHistoryMouseleave() {
+    const drawer = document.getElementById("history-drawer");
+    const container = document.querySelector(".app-container");
+    if (!drawer || !container) return;
+    
+    drawer.addEventListener("mouseleave", () => {
+        if (!container.classList.contains("history-pinned")) {
+            drawer.classList.remove("show");
+        }
+    });
+}
 
 window.fetchHistory = function() {
     fetch("/api/history")
@@ -1902,7 +2062,7 @@ function renderHistoryList(list) {
     const container = document.getElementById("history-list");
     if (!container) return;
     if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:2rem 0; color:var(--text-secondary); font-size:0.85rem;"><i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:0.5rem; display:block; opacity:0.5;"></i>暂无解析成功的历史记录</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:2rem 0; color:var(--text-secondary); font-size:0.85rem;"><i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:0.5rem; display:block; opacity:0.5;"></i>暂无历史记录</div>`;
         return;
     }
     
@@ -1911,11 +2071,31 @@ function renderHistoryList(list) {
     
     container.innerHTML = list.map(item => {
         const displayName = item.name.length > 60 ? item.name.substring(0, 57) + "..." : item.name;
-        const icon = item.type === "url" ? '<i class="fa-solid fa-globe" style="color:var(--accent-color);"></i>' : '<i class="fa-solid fa-file" style="color:#10b981;"></i>';
+        const isCompleted = item.status === "completed" || !item.status;
+        
+        let iconHtml = "";
+        if (!isCompleted) {
+            if (item.status === "paused") {
+                iconHtml = '<i class="fa-solid fa-pause" style="color:var(--accent-color); margin-right: 4px;"></i>';
+            } else {
+                iconHtml = '<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-color); margin-right: 4px;"></i>';
+            }
+        } else {
+            iconHtml = item.type === "url" ? '<i class="fa-solid fa-globe" style="color:var(--accent-color); margin-right: 4px;"></i>' : '<i class="fa-solid fa-file" style="color:#10b981; margin-right: 4px;"></i>';
+        }
+        
+        const clickAction = isCompleted 
+            ? `loadHistoricTask('${item.task_id}', '${item.output_dir.replace(/\\/g, '\\\\')}')`
+            : `loadActiveTask('${item.task_id}')`;
+            
+        const deleteButton = isCompleted 
+            ? `<button class="history-item-delete" onclick="deleteHistoryItem('${item.task_id}', event)" title="删除这条记录"><i class="fa-solid fa-trash-can"></i></button>`
+            : '';
+            
         return `
-            <div class="history-item" onclick="loadHistoricTask('${item.task_id}', '${item.output_dir.replace(/\\/g, '\\\\')}')">
-                <button class="history-item-delete" onclick="deleteHistoryItem('${item.task_id}', event)" title="删除这条记录"><i class="fa-solid fa-trash-can"></i></button>
-                <div class="history-item-title">${icon} ${escapeHtml(displayName)}</div>
+            <div class="history-item" onclick="${clickAction}">
+                ${deleteButton}
+                <div class="history-item-title">${iconHtml}${escapeHtml(displayName)}</div>
                 <div class="history-item-meta">
                     <span>ID: ${item.task_id.substring(0, 15)}...</span>
                     <span>${item.timestamp}</span>
@@ -1924,6 +2104,22 @@ function renderHistoryList(list) {
         `;
     }).join("");
 }
+
+window.loadActiveTask = function(taskId) {
+    currentTaskId = taskId;
+    
+    // Show status panel and hide preview
+    document.getElementById("status-panel").style.display = "flex";
+    document.getElementById("progress-bar").style.width = "0%";
+    document.getElementById("progress-val").innerText = "0%";
+    document.getElementById("console-logs").innerHTML = "<div>重新连接至活动任务中...</div>";
+    document.getElementById("merge-panel").style.display = "none";
+    document.getElementById("download-group").style.display = "none";
+    document.getElementById("preview-section").style.display = "none";
+    
+    // Restart listening to SSE
+    listenToTaskEvents(taskId);
+};
 
 window.loadHistoricTask = function(taskId, outputDir) {
     // Show loading indicator
