@@ -128,6 +128,40 @@ def save_configs(configs: Dict[str, Any]) -> None:
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(configs, f, ensure_ascii=False, indent=4)
 
+def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: str):
+    """Add a successful task to history records"""
+    history_file = os.path.join(DATA_DIR, "task_history.json")
+    history_list = []
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                history_list = json.load(f)
+        except Exception:
+            pass
+            
+    # Avoid duplicate records for the same task_id
+    if any(item.get("task_id") == task_id for item in history_list):
+        return
+        
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    history_list.append({
+        "task_id": task_id,
+        "name": url_or_name,
+        "type": task_type, # "url" or "upload"
+        "output_dir": output_dir,
+        "timestamp": timestamp
+    })
+    
+    # Keep up to 100 history records
+    if len(history_list) > 100:
+        history_list = history_list[-100:]
+        
+    try:
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(history_list, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logger.error(f"Failed to save task history: {e}")
+
 def load_history() -> Dict[str, str]:
     """加载历史记录"""
     if os.path.exists(HISTORY_FILE):
@@ -807,9 +841,17 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
             _output_dir = output_dir
 
             def process_single_image(idx: int):
+                while task["status"] == "paused":
+                    time.sleep(0.5)
+                if task["status"] == "stopped":
+                    raise Exception("Task stopped by user")
+
                 path = _image_paths[idx]
                 out_csv = os.path.join(_output_dir, f"table_{idx + 1}.csv")
                 res = analyzer.analyze(path, output_csv_path=out_csv, formats=task.get("formats"))
+
+                if task["status"] == "stopped":
+                    raise Exception("Task stopped by user")
 
                 out_md = os.path.join(_output_dir, f"slice_{idx + 1}.md")
                 with open(out_md, "w", encoding="utf-8") as f:
@@ -828,6 +870,8 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
                     loop.call_soon_threadsafe(tasks_events[task_id].set)
 
                 for future in concurrent.futures.as_completed(future_to_idx):
+                    if task["status"] == "stopped":
+                        break
                     idx = future_to_idx[future]
                     task["current_processing"].discard(idx)
                     try:
@@ -838,6 +882,8 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
                             task["results"][idx] = (img_p, res_data)
                         log_progress(f"图片 {idx + 1}/{total_images} 识别完成。")
                     except Exception as exc:
+                        if "Task stopped by user" in str(exc) or task["status"] == "stopped":
+                            continue
                         log_progress(f"图片 {idx + 1} 识别失败: {exc}")
                         with task["lock"]:
                             task["results"][idx] = (_image_paths[idx], {"type": "error", "content": str(exc)})
@@ -846,11 +892,16 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
                     task["progress"] = int((task["completed_count"] / total_images) * 100)
                     compile_task_outputs(task_id)
 
+        if task["status"] == "stopped":
+            log_progress("任务已被用户停止。")
+            return
+
         log_progress("正在进行多格式文档合并编译...")
         compile_task_outputs(task_id)
         log_progress("恭喜！网页多模态提取任务全部完成，报告已生成。")
         task["progress"] = 100
         task["status"] = "completed"
+        add_to_history(task_id, url, "url", output_dir)
 
     except Exception as e:
         task["status"] = "failed"
@@ -930,9 +981,18 @@ def run_upload_task(
         _output_dir = output_dir
 
         def process_single(idx: int):
+            while task["status"] == "paused":
+                time.sleep(0.5)
+            if task["status"] == "stopped":
+                raise Exception("Task stopped by user")
+
             path = _task_items[idx]
             out_csv = os.path.join(_output_dir, f"table_{idx + 1}.csv")
             res = analyzer.analyze(path, output_csv_path=out_csv, formats=task.get("formats"))
+
+            if task["status"] == "stopped":
+                raise Exception("Task stopped by user")
+
             out_md = os.path.join(_output_dir, f"slice_{idx + 1}.md")
             with open(out_md, "w", encoding="utf-8") as f:
                 f.write(res["content"] if res["type"] in ["text", "table"] else "RETAIN_IMAGE")
@@ -948,6 +1008,8 @@ def run_upload_task(
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 futures = {executor.submit(process_single, i): i for i in unprocessed_indices}
                 for future in concurrent.futures.as_completed(futures):
+                    if task["status"] == "stopped":
+                        break
                     idx = futures[future]
                     task["current_processing"].discard(idx)
                     try:
@@ -958,6 +1020,8 @@ def run_upload_task(
                             task["results"][idx] = (img_p, res_data)
                         log_progress(f"提取项 {idx + 1}/{total} 识别完成。")
                     except Exception as exc:
+                        if "Task stopped by user" in str(exc) or task["status"] == "stopped":
+                            continue
                         log_progress(f"提取项 {idx + 1} 识别失败: {exc}")
                         with task["lock"]:
                             task["results"][idx] = (_task_items[idx], {"type": "error", "content": str(exc)})
@@ -965,10 +1029,16 @@ def run_upload_task(
                     task["progress"] = int((task["completed_count"] / total) * 100)
                     compile_task_outputs(task_id)
 
+        if task["status"] == "stopped":
+            log_progress("任务已被用户停止。")
+            return
+
         compile_task_outputs(task_id)
         task["progress"] = 100
         task["status"] = "completed"
         log_progress("队列中所有对象提取与报告合并编译全部完成！")
+        name = url if url else ", ".join([os.path.basename(p) for p in file_paths])
+        add_to_history(task_id, name, "url" if url else "upload", output_dir)
 
     except Exception as e:
         task["status"] = "failed"
@@ -1477,7 +1547,7 @@ async def get_task_events(task_id: str) -> EventSourceResponse:
         task = tasks_db[task_id]
         yield {"data": build_sse_payload(task)}
 
-        while task["status"] == "running":
+        while task["status"] in ["running", "paused"]:
             try:
                 await asyncio.wait_for(tasks_events[task_id].wait(), timeout=1.0)
                 tasks_events[task_id].clear()
@@ -1524,6 +1594,135 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
 
     thread.start()
     return {"status": "success"}
+
+
+@app.post("/api/pause/{task_id}")
+async def pause_task(task_id: str) -> Dict[str, Any]:
+    """暂停运行中的任务"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    if task["status"] != "running":
+        raise HTTPException(status_code=400, detail="Only running tasks can be paused")
+    task["status"] = "paused"
+    task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 任务已被用户暂停。")
+    if task_id in tasks_events:
+        tasks_events[task_id].set()
+    return {"status": "paused"}
+
+
+@app.post("/api/resume/{task_id}")
+async def resume_task(task_id: str) -> Dict[str, Any]:
+    """继续已暂停的任务"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    if task["status"] != "paused":
+        raise HTTPException(status_code=400, detail="Only paused tasks can be resumed")
+    task["status"] = "running"
+    task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 任务已被用户继续恢复运行。")
+    if task_id in tasks_events:
+        tasks_events[task_id].set()
+    return {"status": "running"}
+
+
+@app.post("/api/stop/{task_id}")
+async def stop_task(task_id: str) -> Dict[str, Any]:
+    """终止/停止运行中或暂停的任务"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    if task["status"] not in ["running", "paused"]:
+        raise HTTPException(status_code=400, detail="Only running or paused tasks can be stopped")
+    task["status"] = "stopped"
+    task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 任务被用户手动停止。")
+    if task_id in tasks_events:
+        tasks_events[task_id].set()
+    return {"status": "stopped"}
+
+
+@app.get("/api/history")
+async def get_history() -> List[Dict[str, Any]]:
+    """获取所有历史解析成功的任务列表"""
+    history_file = os.path.join(DATA_DIR, "task_history.json")
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+@app.delete("/api/history/{task_id}")
+async def delete_history_item(task_id: str) -> Dict[str, Any]:
+    """从任务历史记录中删除一条项目"""
+    history_file = os.path.join(DATA_DIR, "task_history.json")
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                history_list = json.load(f)
+            new_list = [item for item in history_list if item.get("task_id") != task_id]
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(new_list, f, ensure_ascii=False, indent=4)
+            return {"status": "success"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "success"}
+
+
+@app.post("/api/history/load/{task_id}")
+async def load_historic_task(task_id: str, payload: Dict[str, str]) -> Dict[str, Any]:
+    """从本地硬盘的输出目录还原历史任务到内存，供前端回放预览和下载"""
+    output_dir = payload.get("output_dir")
+    if not output_dir or not os.path.exists(output_dir):
+        raise HTTPException(status_code=404, detail="Output directory not found")
+        
+    image_paths_file = os.path.join(output_dir, "image_paths.json")
+    if not os.path.exists(image_paths_file):
+        raise HTTPException(status_code=400, detail="image_paths.json missing in output directory")
+        
+    try:
+        with open(image_paths_file, "r", encoding="utf-8") as f:
+            image_paths = json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read image_paths.json: {e}")
+        
+    # Rebuild task dict
+    task = {
+        "status": "completed",
+        "progress": 100,
+        "completed_count": len(image_paths),
+        "total_count": len(image_paths),
+        "logs": ["从历史记录中成功加载。"],
+        "error": "",
+        "current_processing": set(),
+        "image_paths": image_paths,
+        "results": {},
+        "output_dir": output_dir,
+        "lock": threading.Lock()
+    }
+    
+    # Read slices
+    for idx, img_path in enumerate(image_paths):
+        slice_md = os.path.join(output_dir, f"slice_{idx + 1}.md")
+        slice_csv = os.path.join(output_dir, f"table_{idx + 1}.csv")
+        if os.path.exists(slice_md):
+            try:
+                with open(slice_md, "r", encoding="utf-8") as f:
+                    content = f.read()
+                content = ensure_markdown_table(content)
+                rtype = "image" if content == "RETAIN_IMAGE" else ("table" if has_markdown_table(content) else "text")
+                res_data = {"type": rtype, "content": content}
+                if os.path.exists(slice_csv):
+                    res_data["csv_path"] = slice_csv
+                task["results"][idx] = (img_path, res_data)
+            except Exception:
+                pass
+                
+    tasks_db[task_id] = task
+    tasks_events[task_id] = asyncio.Event()
+    return {"status": "success", "task_id": task_id}
 
 
 @app.get("/api/download/{task_id}/{file_type}")

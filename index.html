@@ -296,6 +296,162 @@
             font-weight: 600;
             color: var(--accent-color);
         }
+
+        /* Unified Navigation Styles */
+        .nav-item-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-item-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--card-border);
+        }
+        .light-theme .nav-item-btn:hover {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        .badge-accent {
+            background: var(--accent-color);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.1rem 0.35rem;
+            border-radius: 10px;
+            line-height: 1;
+        }
+
+        /* History Drawer Style */
+        .history-drawer {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 360px;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid var(--card-border);
+            z-index: 10000;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+        .history-drawer.show {
+            right: 0;
+        }
+        .history-list-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding-right: 0.25rem;
+        }
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            text-align: left;
+        }
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-color);
+        }
+        .history-item-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-all;
+            margin-bottom: 0.25rem;
+        }
+        .history-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item-delete {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        .history-item:hover .history-item-delete {
+            opacity: 1;
+        }
+        .history-item-delete:hover {
+            color: var(--error-color);
+        }
+
+        /* Usage Modal Style */
+        .usage-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+        }
+        .usage-modal.show {
+            display: flex;
+        }
+        .usage-modal-content {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 550px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            color: var(--text-primary);
+        }
+        
+        .light-theme .history-drawer {
+            background: rgba(248, 250, 252, 0.95);
+        }
+        .light-theme .usage-modal-content {
+            background: rgba(248, 250, 252, 0.95);
+        }
+        .light-theme .history-item {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        .light-theme .history-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
     </style>
 </head>
 <body>
@@ -306,15 +462,15 @@
 </div>
 
 <div class="app-container">
-    <header>
-        <h1 style="display:flex; align-items:center; gap:0.75rem;"><img src="/static/logo.ico" alt="Logo" style="width:38px; height:38px; object-fit:contain;"> OmniExtract <span style="font-size:1.2rem;font-weight:400;opacity:0.7;">万象</span></h1>
-        <div style="display:flex; align-items:center; gap:1rem;">
-            <button class="theme-btn" id="theme-toggle-btn" title="切换主题">
-                <i class="fa-solid fa-moon" id="theme-icon"></i>
-            </button>
-            <button class="btn btn-secondary" id="toggle-sidebar-btn"><i class="fa-solid fa-sliders"></i> <span id="toggle-sidebar-text">隐藏配置</span></button>
-            <p>基于 FastAPI 的极速网页多模态提取引擎</p>
-        </div>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--card-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.ico" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> OmniExtract <span style="font-size:1.1rem;font-weight:400;opacity:0.7;">万象</span></h1>
+        <nav class="unified-nav" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+            <button class="nav-item-btn" onclick="scrollToIntro()" title="项目简介"><i class="fa-solid fa-circle-info"></i> <span>简介</span></button>
+            <button class="nav-item-btn" onclick="showUsageModal()" title="使用指南"><i class="fa-solid fa-book-open"></i> <span>使用</span></button>
+            <button class="nav-item-btn" id="theme-toggle-btn" title="切换主题"><i class="fa-solid fa-moon" id="theme-icon"></i> <span>主题</span></button>
+            <button class="nav-item-btn" id="toggle-sidebar-btn" title="API配置"><i class="fa-solid fa-sliders"></i> <span id="toggle-sidebar-text">隐藏配置</span></button>
+            <button class="nav-item-btn" onclick="toggleHistoryDrawer()" title="历史记录"><i class="fa-solid fa-history"></i> <span>历史记录</span><span id="history-badge" class="badge-accent" style="display:none; margin-left: 4px;">0</span></button>
+        </nav>
     </header>
 
     <main class="main-panel">
@@ -352,6 +508,13 @@
             </div>
             <div class="progress-wrapper"><div class="progress-bar" id="progress-bar"></div></div>
             <div class="console-logs" id="console-logs"></div>
+
+            <!-- Task Control Actions -->
+            <div id="task-controls" style="display: none; align-items: center; justify-content: flex-start; gap: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--card-border); padding-top: 0.75rem;">
+                <button class="btn btn-secondary" id="pause-task-btn" onclick="pauseCurrentTask()" style="padding:0.45rem 1rem; font-size:0.8rem; border-color:var(--accent-color); color:var(--accent-color);"><i class="fa-solid fa-pause"></i> 暂停</button>
+                <button class="btn btn-secondary" id="resume-task-btn" onclick="resumeCurrentTask()" style="display:none; padding:0.45rem 1rem; font-size:0.8rem; border-color:var(--accent-color); color:var(--accent-color);"><i class="fa-solid fa-play"></i> 继续</button>
+                <button class="btn btn-secondary" id="stop-task-btn" onclick="stopCurrentTask()" style="padding:0.45rem 1rem; font-size:0.8rem; border-color:var(--error-color); color:var(--error-color);"><i class="fa-solid fa-stop"></i> 终止</button>
+            </div>
 
             <div class="merge-panel" id="merge-panel">
                 <div class="merge-actions" style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
@@ -461,6 +624,39 @@
             </div>
         </div>
     </aside>
+    <!-- Bottom Introduction Section -->
+    <footer class="glass-card" style="margin-top: 1.5rem; padding: 1.5rem; text-align: center; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;" id="intro-section">
+        <p style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0;">基于 FastAPI 的极速网页多模态提取引擎</p>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); max-width: 650px; margin: 0; line-height: 1.5; text-align: center;">
+            OmniExtract 万象支持对网页进行高保真双重解析，具备智能切片聚类、多模态文字与表格提取。在离线环境下支持调用本地原生 OCR（Windows Native OCR、macOS Vision OCR）及本地 RapidOCR 模型，在联网环境下无缝降级接入 MinerU 云端多模态大模型。
+        </p>
+    </footer>
+</div>
+
+<div id="history-drawer" class="history-drawer">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border); padding-bottom:0.75rem;">
+        <span style="font-size:1.1rem; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-history" style="color:var(--accent-color);"></i> 历史解析记录</span>
+        <button class="nav-item-btn" onclick="toggleHistoryDrawer()" style="padding:0.25rem 0.5rem; border-radius:4px;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="history-list" class="history-list-container">
+        <!-- History items will be dynamically injected here -->
+    </div>
+</div>
+
+<div id="usage-modal" class="usage-modal" onclick="closeUsageModal()">
+    <div class="usage-modal-content" onclick="event.stopPropagation()">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border); padding-bottom:0.75rem;">
+            <span style="font-size:1.1rem; font-weight:600; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-book-open" style="color:var(--accent-color);"></i> 快速使用指南</span>
+            <button class="nav-item-btn" onclick="closeUsageModal()" style="padding:0.25rem 0.5rem; border-radius:4px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="font-size:0.85rem; line-height:1.6; display:flex; flex-direction:column; gap:0.75rem; text-align:left;">
+            <p><strong>1. 添加待处理项目：</strong> 您可以点击选择文件、直接拖入本地文件（图片、PDF、Word等），也可以在链接输入框中输入待解析的网页 URL。甚至可以直接粘贴截图（Ctrl+V）！</p>
+            <p><strong>2. 选择识别引擎：</strong> 在右侧配置面板中选择适合的 API 引擎。如配置有 MinerU Token，可选用云端大模型；离线时可无缝降级选用系统原生 OCR 引擎，免装任何重型包。</p>
+            <p><strong>3. 设定解析格式：</strong> 通过勾选“表格”、“纯文本”或“数学公式”等偏好设定，精细控制文档内容的渲染形式。</p>
+            <p><strong>4. 开始并监控提取：</strong> 点击“开始提取”按键，系统将显示每张切片的实时提取进度。如果需要，您可以通过“暂停”、“继续”或“终止”按键进行灵活的流程控制。</p>
+            <p><strong>5. 浏览与下载结果：</strong> 解析完成后，您可以在“切片明细”中对比原图和提取文字，或在“合成结果预览”里阅读完整渲染排版的文档，并一键打包下载为 Word、PDF、Markdown 或 Excel 表格文件。</p>
+        </div>
+    </div>
 </div>
 
 <div id="image-modal" class="modal" onclick="closeModal()">
@@ -714,6 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupSidebarToggle();
     setupMergeListener();
     setupTabListeners();
+    fetchHistory();
 });
 
 function initTheme() {
@@ -969,6 +1166,9 @@ function listenToTaskEvents(taskId) {
     sseSource = new EventSource(`/api/events/${taskId}`);
     const logBox = document.getElementById("console-logs"), progressBar = document.getElementById("progress-bar");
     const progressVal = document.getElementById("progress-val"), statusInfo = document.getElementById("status-info");
+    const taskControls = document.getElementById("task-controls");
+    const pauseBtn = document.getElementById("pause-task-btn");
+    const resumeBtn = document.getElementById("resume-task-btn");
 
     sseSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -984,13 +1184,28 @@ function listenToTaskEvents(taskId) {
 
         if (data.status === "running") {
             statusInfo.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-color);"></i> 正在提取 (${data.completed}/${data.total})...`;
+            taskControls.style.display = "flex";
+            pauseBtn.style.display = "inline-flex";
+            resumeBtn.style.display = "none";
+        } else if (data.status === "paused") {
+            statusInfo.innerHTML = `<i class="fa-solid fa-pause" style="color:var(--accent-color);"></i> 任务已暂停`;
+            taskControls.style.display = "flex";
+            pauseBtn.style.display = "none";
+            resumeBtn.style.display = "inline-flex";
+        } else if (data.status === "stopped") {
+            statusInfo.innerHTML = `<i class="fa-solid fa-circle-stop" style="color:var(--error-color);"></i> 任务已被终止`;
+            taskControls.style.display = "none";
+            sseSource.close();
         } else if (data.status === "completed") {
             statusInfo.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="color:var(--accent-color);"></i> 提取完成！正在自动合并与导出编译...`;
+            taskControls.style.display = "none";
             document.getElementById("merge-panel").style.display = "flex";
             sseSource.close();
             autoMergeTask(currentTaskId);
+            fetchHistory(); // 任务完成，刷新历史记录列表
         } else if (data.status === "failed") {
             statusInfo.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;"><span><i class="fa-solid fa-circle-xmark" style="color:var(--error-color);"></i> 失败: ${data.error}</span><button class="btn btn-secondary" onclick="retryCurrentTask()" style="padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(239,68,68,0.15); border-color:var(--error-color); color:#fca5a5;"><i class="fa-solid fa-arrows-rotate"></i> 从断点重试</button></div>`;
+            taskControls.style.display = "none";
             sseSource.close();
         }
 
@@ -1549,6 +1764,166 @@ async function handleDownload(btn, url, type, defaultName) {
         btn.innerHTML = originalHtml;
         btn.style.pointerEvents = 'auto';
     }
+}
+
+/* Task Control Functions */
+window.pauseCurrentTask = function() {
+    if (!currentTaskId) return;
+    fetch(`/api/pause/${currentTaskId}`, { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+            console.log("Task paused:", data);
+        })
+        .catch(err => alert("暂停失败: " + err.message));
+};
+
+window.resumeCurrentTask = function() {
+    if (!currentTaskId) return;
+    fetch(`/api/resume/${currentTaskId}`, { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+            console.log("Task resumed:", data);
+        })
+        .catch(err => alert("继续失败: " + err.message));
+};
+
+window.stopCurrentTask = function() {
+    if (!currentTaskId) return;
+    if (!confirm("确定终止当前正在提取的任务吗？该操作不可撤销。")) return;
+    fetch(`/api/stop/${currentTaskId}`, { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+            console.log("Task stopped:", data);
+            document.getElementById("task-controls").style.display = "none";
+        })
+        .catch(err => alert("终止失败: " + err.message));
+};
+
+/* Unified Navigation Auxiliary Functions */
+window.scrollToIntro = function() {
+    document.getElementById("intro-section").scrollIntoView({ behavior: 'smooth' });
+};
+
+window.showUsageModal = function() {
+    document.getElementById("usage-modal").classList.add("show");
+};
+
+window.closeUsageModal = function() {
+    document.getElementById("usage-modal").classList.remove("show");
+};
+
+/* History Record Functions */
+window.toggleHistoryDrawer = function() {
+    const drawer = document.getElementById("history-drawer");
+    drawer.classList.toggle("show");
+    if (drawer.classList.contains("show")) {
+        fetchHistory();
+    }
+};
+
+window.fetchHistory = function() {
+    fetch("/api/history")
+        .then(r => r.json())
+        .then(list => {
+            renderHistoryList(list);
+            const badge = document.getElementById("history-badge");
+            if (list.length > 0) {
+                badge.innerText = list.length;
+                badge.style.display = "inline-block";
+            } else {
+                badge.style.display = "none";
+            }
+        })
+        .catch(err => console.error("加载历史记录失败:", err));
+};
+
+function renderHistoryList(list) {
+    const container = document.getElementById("history-list");
+    if (!container) return;
+    if (list.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:2rem 0; color:var(--text-secondary); font-size:0.85rem;"><i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:0.5rem; display:block; opacity:0.5;"></i>暂无解析成功的历史记录</div>`;
+        return;
+    }
+    
+    // Sort history by timestamp descending
+    list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    container.innerHTML = list.map(item => {
+        const displayName = item.name.length > 60 ? item.name.substring(0, 57) + "..." : item.name;
+        const icon = item.type === "url" ? '<i class="fa-solid fa-globe" style="color:var(--accent-color);"></i>' : '<i class="fa-solid fa-file" style="color:#10b981;"></i>';
+        return `
+            <div class="history-item" onclick="loadHistoricTask('${item.task_id}', '${item.output_dir.replace(/\\/g, '\\\\')}')">
+                <button class="history-item-delete" onclick="deleteHistoryItem('${item.task_id}', event)" title="删除这条记录"><i class="fa-solid fa-trash-can"></i></button>
+                <div class="history-item-title">${icon} ${escapeHtml(displayName)}</div>
+                <div class="history-item-meta">
+                    <span>ID: ${item.task_id.substring(0, 15)}...</span>
+                    <span>${item.timestamp}</span>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+window.loadHistoricTask = function(taskId, outputDir) {
+    // Show loading indicator
+    const drawer = document.getElementById("history-drawer");
+    drawer.classList.remove("show"); // Close drawer
+    
+    const startBtn = document.getElementById("start-btn");
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 加载历史...';
+    
+    document.getElementById("status-panel").style.display = "flex";
+    document.getElementById("status-info").innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-color);"></i> 正在从输出目录加载历史解析报告...`;
+    document.getElementById("progress-bar").style.width = "0%";
+    document.getElementById("progress-val").innerText = "0%";
+    document.getElementById("console-logs").innerHTML = "<div>正在读取底层 slices 信息...</div>";
+    document.getElementById("merge-panel").style.display = "none";
+    document.getElementById("download-group").style.display = "none";
+    document.getElementById("preview-section").style.display = "none";
+    
+    fetch(`/api/history/load/${taskId}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ output_dir: outputDir })
+    })
+    .then(r => { if (!r.ok) return r.json().then(d => { throw new Error(d.detail || "加载失败"); }); return r.json(); })
+    .then(data => {
+        currentTaskId = taskId;
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fa-solid fa-play"></i> 开始提取';
+        
+        // Listen to load completion (which is instant as it is already complete)
+        listenToTaskEvents(taskId);
+    })
+    .catch(err => {
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fa-solid fa-play"></i> 开始提取';
+        alert("还原历史任务失败: " + err.message);
+    });
+};
+
+window.deleteHistoryItem = function(taskId, event) {
+    event.stopPropagation(); // Avoid triggering parent loadHistoricTask click
+    if (!confirm("确定删除这条历史记录吗？(仅删除列表记录，不影响硬盘已生成文件)")) return;
+    
+    fetch(`/api/history/${taskId}`, { method: "DELETE" })
+        .then(r => r.json())
+        .then(data => {
+            fetchHistory(); // Refresh
+        })
+        .catch(err => alert("删除历史失败: " + err.message));
+};
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 </script>
 </body>
