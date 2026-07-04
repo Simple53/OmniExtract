@@ -94,6 +94,17 @@ def on_exit(icon, item):
     os._exit(0)
 
 
+def on_open_log(icon, item):
+    """查看后台日志"""
+    logger.info("Tray menu: Open Log File")
+    if os.path.exists(log_file):
+        try:
+            os.startfile(log_file)
+        except Exception as e:
+            logger.error(f"Failed to open log file: {e}")
+    else:
+        logger.warning("Log file does not exist yet.")
+
 def main():
     logger.info("Starting OmniExtract tray manager...")
 
@@ -128,16 +139,19 @@ def main():
     if is_chinese:
         label_open = "打开网页界面"
         label_output = "打开输出目录"
+        label_log = "查看后台进度 (日志)"
         label_exit = "退出"
     else:
         label_open = "Open Webpage"
         label_output = "Open Output Folder"
+        label_log = "View Backend Progress (Logs)"
         label_exit = "Exit"
 
     # 4. 定义托盘右键菜单
     menu = pystray.Menu(
         pystray.MenuItem(label_open, on_open_webpage, default=True),
         pystray.MenuItem(label_output, on_open_output),
+        pystray.MenuItem(label_log, on_open_log),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(label_exit, on_exit)
     )

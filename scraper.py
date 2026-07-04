@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import urllib3
+from PIL import Image
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -308,6 +309,24 @@ class WebScraper:
             if os.path.getsize(filepath) < 10240:
                 os.remove(filepath)
                 return None
+
+            # 微信公众号等文章常常包含大量无关的装饰插图、二维码等，通过 PIL 检查尺寸和比例
+            try:
+                with Image.open(filepath) as img_test:
+                    width, height = img_test.size
+                    # 过滤过小图片（小于 100x100）或过细长图片（高度小于 50 或 宽高比大于 8 或宽高比小于 1/8）
+                    if width < 100 or height < 50:
+                        logger.info(f"Skipping image {filename} due to small dimensions: {width}x{height}")
+                        os.remove(filepath)
+                        return None
+                    if width / max(height, 1) > 8 or height / max(width, 1) > 8:
+                        logger.info(f"Skipping image {filename} due to extreme aspect ratio: {width}x{height}")
+                        os.remove(filepath)
+                        return None
+            except Exception as e:
+                logger.warning(f"PIL could not verify image {filepath}: {e}")
+                # 如果无法解析，有可能是动图或损坏的图片，静默保留
+                pass
 
             return filepath
         except requests.RequestException as e:
