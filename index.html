@@ -587,6 +587,23 @@
                     <a class="btn btn-download" id="down-excel" href="#" style="display:none;"><i class="fa-solid fa-file-excel"></i> Excel</a>
                 </div>
             </div>
+
+            <!-- Slice Review Panel -->
+            <div id="review-panel" style="display:none; margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 1rem;">
+                <h3 style="font-size: 0.9rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color:var(--text-primary); font-weight:600;"><i class="fa-solid fa-images" style="color:var(--accent-color);"></i> 切片列表审查 / Slice Review</span>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);" id="review-count">共 0 个切片</span>
+                </h3>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" id="btn-select-all" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; border-radius: 6px;"><i class="fa-solid fa-square-check"></i> 全选</button>
+                    <button class="btn btn-secondary" id="btn-deselect-all" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; border-radius: 6px;"><i class="fa-regular fa-square"></i> 取消全选</button>
+                    <button class="btn btn-secondary" id="btn-bulk-delete" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; border-radius: 6px; display: none; background: rgba(239, 68, 68, 0.15); border-color: var(--error-color); color: #fca5a5;"><i class="fa-solid fa-trash"></i> 批量删除</button>
+                    <button class="btn btn-primary" id="btn-continue-extraction" style="padding: 0.35rem 0.85rem; font-size: 0.75rem; border-radius: 6px; margin-left: auto;"><i class="fa-solid fa-play"></i> 确认并继续</button>
+                </div>
+                <div class="slice-list" id="slice-list-container" style="max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; padding: 0.25rem; border: 1px dashed var(--card-border); border-radius: 8px; background: rgba(0,0,0,0.15);">
+                    <!-- 切片列表将在此动态加载 -->
+                </div>
+            </div>
         </div>
 
         <div class="preview-section" id="preview-section">
@@ -1251,6 +1268,10 @@ function listenToTaskEvents(taskId) {
 
         currentProcessing = new Set(data.current_processing || []);
 
+        if (data.status !== "waiting_review") {
+            document.getElementById("review-panel").style.display = "none";
+        }
+
         if (data.status === "running") {
             statusInfo.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-color);"></i> 正在提取 (${data.completed}/${data.total})...`;
             taskControls.style.display = "flex";
@@ -1261,6 +1282,14 @@ function listenToTaskEvents(taskId) {
             taskControls.style.display = "flex";
             pauseBtn.style.display = "none";
             resumeBtn.style.display = "inline-flex";
+        } else if (data.status === "waiting_review") {
+            statusInfo.innerHTML = `<i class="fa-solid fa-images" style="color:var(--accent-color);"></i> 切片已生成，等待手动审查`;
+            taskControls.style.display = "flex";
+            pauseBtn.style.display = "none";
+            resumeBtn.style.display = "none";
+            // For waiting_review, we allow the Stop button to function
+            document.getElementById("stop-task-btn").style.display = "inline-flex";
+            loadReviewSlices(taskId);
         } else if (data.status === "stopped") {
             statusInfo.innerHTML = `<i class="fa-solid fa-circle-stop" style="color:var(--error-color);"></i> 任务已被终止`;
             taskControls.style.display = "none";
@@ -1302,6 +1331,142 @@ window.retryCurrentTask = function() {
      .then(() => listenToTaskEvents(currentTaskId))
      .catch(err => { document.getElementById("status-info").innerHTML = `<span style="color:var(--error-color);">恢复失败: ${err.message}</span>`; });
 }
+
+// Slice Review Phase Functions
+function loadReviewSlices(taskId) {
+    const reviewPanel = document.getElementById("review-panel");
+    const sliceList = document.getElementById("slice-list-container");
+    const reviewCount = document.getElementById("review-count");
+    if (!reviewPanel || !sliceList) return;
+
+    // Show panel
+    reviewPanel.style.display = "block";
+    
+    // Prevent reloading loop if already rendering this task
+    if (sliceList.getAttribute("data-rendering-task") === taskId) {
+        return; 
+    }
+    sliceList.setAttribute("data-rendering-task", taskId);
+
+    sliceList.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> 加载中...</div>`;
+
+    fetch(`/api/slices/${taskId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== "success") throw new Error("获取切片失败");
+            
+            sliceList.innerHTML = "";
+            reviewCount.innerText = `共 ${data.slices.length} 个切片 / Total ${data.slices.length} Slices`;
+            
+            if (data.slices.length === 0) {
+                sliceList.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);">暂无待提取切片。请添加文件或重新提取。 / No slices left.</div>`;
+                return;
+            }
+
+            data.slices.forEach(slice => {
+                const card = document.createElement("div");
+                card.className = "slice-card";
+                card.style = "position: relative; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;";
+                card.innerHTML = `
+                    <div style="position: relative; aspect-ratio: 16/10; background: #1a1a1a; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <input type="checkbox" class="slice-checkbox" data-index="${slice.index}" style="position: absolute; top: 0.35rem; left: 0.35rem; width: 1.15rem; height: 1.15rem; cursor: pointer; z-index: 2;">
+                        <img src="${slice.url}" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer;" onclick="previewReviewImage('${slice.url}')">
+                        <button class="btn-delete-single" data-index="${slice.index}" style="position: absolute; top: 0.35rem; right: 0.35rem; background: rgba(239, 68, 68, 0.85); border: none; border-radius: 4px; color: white; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; z-index: 2;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div style="font-size: 0.75rem; text-align: center; color: var(--text-secondary);">分片 / Slice ${slice.index + 1}</div>
+                `;
+                sliceList.appendChild(card);
+            });
+
+            // Bind single delete buttons
+            sliceList.querySelectorAll(".btn-delete-single").forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.getAttribute("data-index"));
+                    deleteSlices(taskId, [index]);
+                };
+            });
+
+            // Bind checkbox events to show/hide bulk delete button
+            sliceList.querySelectorAll(".slice-checkbox").forEach(cb => {
+                cb.onchange = () => updateBulkDeleteVisibility();
+            });
+            updateBulkDeleteVisibility();
+        })
+        .catch(err => {
+            sliceList.removeAttribute("data-rendering-task");
+            sliceList.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--error-color);"><i class="fa-solid fa-triangle-exclamation"></i> ${err.message}</div>`;
+        });
+}
+
+function updateBulkDeleteVisibility() {
+    const checkboxes = document.querySelectorAll(".slice-checkbox:checked");
+    const bulkDeleteBtn = document.getElementById("btn-bulk-delete");
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.style.display = checkboxes.length > 0 ? "inline-flex" : "none";
+    }
+}
+
+function deleteSlices(taskId, indices) {
+    if (!confirm(`确定要删除选中的 ${indices.length} 个切片吗？该操作不可撤销。\nAre you sure you want to delete these ${indices.length} slice(s)? This cannot be undone.`)) return;
+    
+    // Clear data-rendering-task so it reloads
+    document.getElementById("slice-list-container").removeAttribute("data-rendering-task");
+    
+    fetch(`/api/slices/${taskId}/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ indices })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === "success") {
+            loadReviewSlices(taskId);
+        } else {
+            alert("删除失败 / Failed to delete: " + data.message);
+        }
+    })
+    .catch(err => alert("请求出错 / Request failed: " + err.message));
+}
+
+function previewReviewImage(url) {
+    window.open(url, "_blank");
+}
+
+// Bind review action buttons on window load
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("btn-select-all").onclick = () => {
+        document.querySelectorAll(".slice-checkbox").forEach(cb => cb.checked = true);
+        updateBulkDeleteVisibility();
+    };
+    document.getElementById("btn-deselect-all").onclick = () => {
+        document.querySelectorAll(".slice-checkbox").forEach(cb => cb.checked = false);
+        updateBulkDeleteVisibility();
+    };
+    document.getElementById("btn-bulk-delete").onclick = () => {
+        if (!currentTaskId) return;
+        const indices = Array.from(document.querySelectorAll(".slice-checkbox:checked")).map(cb => parseInt(cb.getAttribute("data-index")));
+        if (indices.length > 0) {
+            deleteSlices(currentTaskId, indices);
+        }
+    };
+    document.getElementById("btn-continue-extraction").onclick = () => {
+        if (!currentTaskId) return;
+        
+        document.getElementById("review-panel").style.display = "none";
+        document.getElementById("slice-list-container").removeAttribute("data-rendering-task");
+        document.getElementById("status-info").innerHTML = `<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--accent-color);"></i> 正在提交确认，准备启动提取...`;
+        
+        fetch(`/api/slices/${currentTaskId}/continue`, { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== "success") {
+                alert("启动提取失败 / Continue failed: " + data.message);
+            }
+        })
+        .catch(err => alert("确认请求出错 / Continue request failed: " + err.message));
+    };
+});
 
 function setupNavListeners() {
     document.getElementById("first-btn").addEventListener("click", () => { if (totalSlices > 0) { currentPreviewIdx = 0; userManuallyNavigated = true; renderCurrentPreview(); updateNavButtons(); } });

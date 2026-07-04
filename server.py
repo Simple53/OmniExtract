@@ -135,6 +135,19 @@ def save_configs(configs: Dict[str, Any]) -> None:
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(configs, f, ensure_ascii=False, indent=4)
 
+def _get_relative_url(img_path: str) -> str:
+    """获取图片的相对输出路径 URL"""
+    normalized_path = img_path.replace("\\", "/")
+    if "/output/" in normalized_path:
+        idx = normalized_path.rindex("/output/")
+        return normalized_path[idx+1:]
+    else:
+        try:
+            rel = os.path.relpath(img_path, OUTPUT_DIR).replace("\\", "/")
+            return f"output/{rel}"
+        except Exception:
+            return normalized_path
+
 def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: str, status: str = "completed"):
     """记录或更新任务历史记录到 task_history.json"""
     history_file = os.path.join(DATA_DIR, "task_history.json")
@@ -833,86 +846,11 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
 
             log_progress(f"长图智能切分完成！共生成 {len(image_paths)} 张切片。")
 
-        # 启动识别引擎并发处理剩余图片
-        total_images = len(image_paths)
-        unprocessed_indices = [i for i in range(total_images) if i not in task["results"]]
-
-        if unprocessed_indices:
-            log_progress(f"正在配置 {config['api_type']} 识别引擎，启用并行处理...")
-            analyzer = ImageAnalyzer(
-                api_type=config["api_type"],
-                api_key=config["api_key"],
-                base_url=config["base_url"],
-                model_name=config["model_name"],
-                split_len=config.get("split_len"),
-                split_regex=config.get("split_regex")
-            )
-
-            _image_paths = list(image_paths)
-            _output_dir = output_dir
-
-            def process_single_image(idx: int):
-                while task["status"] == "paused":
-                    time.sleep(0.5)
-                if task["status"] == "stopped":
-                    raise Exception("Task stopped by user")
-
-                path = _image_paths[idx]
-                out_csv = os.path.join(_output_dir, f"table_{idx + 1}.csv")
-                res = analyzer.analyze(path, output_csv_path=out_csv, formats=task.get("formats"))
-
-                if task["status"] == "stopped":
-                    raise Exception("Task stopped by user")
-
-                out_md = os.path.join(_output_dir, f"slice_{idx + 1}.md")
-                with open(out_md, "w", encoding="utf-8") as f:
-                    if res["type"] in ["text", "table"]:
-                        f.write(res["content"])
-                    elif res["type"] == "image":
-                        f.write("RETAIN_IMAGE")
-                    else:
-                        f.write(res["content"])
-                return idx, path, res
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_to_idx = {executor.submit(process_single_image, i): i for i in unprocessed_indices}
-                task["current_processing"] = set(unprocessed_indices)
-                if task_id in tasks_events:
-                    loop.call_soon_threadsafe(tasks_events[task_id].set)
-
-                for future in concurrent.futures.as_completed(future_to_idx):
-                    if task["status"] == "stopped":
-                        break
-                    idx = future_to_idx[future]
-                    task["current_processing"].discard(idx)
-                    try:
-                        _, img_p, res_data = future.result()
-                        if res_data["type"] != "image" and has_markdown_table(res_data.get("content", "")):
-                            res_data["type"] = "table"
-                        with task["lock"]:
-                            task["results"][idx] = (img_p, res_data)
-                        log_progress(f"图片 {idx + 1}/{total_images} 识别完成。")
-                    except Exception as exc:
-                        if "Task stopped by user" in str(exc) or task["status"] == "stopped":
-                            continue
-                        log_progress(f"图片 {idx + 1} 识别失败: {exc}")
-                        with task["lock"]:
-                            task["results"][idx] = (_image_paths[idx], {"type": "error", "content": str(exc)})
-
-                    task["completed_count"] += 1
-                    task["progress"] = int((task["completed_count"] / total_images) * 100)
-                    compile_task_outputs(task_id)
-
-        if task["status"] == "stopped":
-            log_progress("任务已被用户停止。")
-            return
-
-        log_progress("正在进行多格式文档合并编译...")
-        compile_task_outputs(task_id)
-        log_progress("恭喜！网页多模态提取任务全部完成，报告已生成。")
-        task["progress"] = 100
-        task["status"] = "completed"
-        add_to_history(task_id, url, "url", output_dir)
+        # 此时暂停等待用户确认
+        task["status"] = "waiting_review"
+        task["task_type"] = "url"
+        add_to_history(task_id, url, "url", output_dir, "waiting_review")
+        log_progress("切片处理与生成完毕，等待用户手动审查与确认...")
 
     except Exception as e:
         task["status"] = "failed"
@@ -977,79 +915,13 @@ def run_upload_task(
         with open(os.path.join(output_dir, "image_paths.json"), "w", encoding="utf-8") as f:
             json.dump(task_items, f, ensure_ascii=False, indent=4)
 
-        log_progress(f"文件处理与切片生成完毕，共 {len(task_items)} 个待提取项。配置 {config['api_type']} 引擎中...")
+        log_progress(f"文件处理与切片生成完毕，共 {len(task_items)} 个待提取项。")
 
-        analyzer = ImageAnalyzer(
-            api_type=config["api_type"],
-            api_key=config["api_key"],
-            base_url=config["base_url"],
-            model_name=config["model_name"],
-            split_len=config.get("split_len"),
-            split_regex=config.get("split_regex")
-        )
-
-        _task_items = list(task_items)
-        _output_dir = output_dir
-
-        def process_single(idx: int):
-            while task["status"] == "paused":
-                time.sleep(0.5)
-            if task["status"] == "stopped":
-                raise Exception("Task stopped by user")
-
-            path = _task_items[idx]
-            out_csv = os.path.join(_output_dir, f"table_{idx + 1}.csv")
-            res = analyzer.analyze(path, output_csv_path=out_csv, formats=task.get("formats"))
-
-            if task["status"] == "stopped":
-                raise Exception("Task stopped by user")
-
-            out_md = os.path.join(_output_dir, f"slice_{idx + 1}.md")
-            with open(out_md, "w", encoding="utf-8") as f:
-                f.write(res["content"] if res["type"] in ["text", "table"] else "RETAIN_IMAGE")
-            return idx, path, res
-
-        total = len(task_items)
-        unprocessed_indices = [i for i in range(total) if i not in task["results"]]
-        task["current_processing"] = set(unprocessed_indices)
-        if task_id in tasks_events:
-            loop.call_soon_threadsafe(tasks_events[task_id].set)
-
-        if unprocessed_indices:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                futures = {executor.submit(process_single, i): i for i in unprocessed_indices}
-                for future in concurrent.futures.as_completed(futures):
-                    if task["status"] == "stopped":
-                        break
-                    idx = futures[future]
-                    task["current_processing"].discard(idx)
-                    try:
-                        _, img_p, res_data = future.result()
-                        if res_data["type"] != "image" and has_markdown_table(res_data.get("content", "")):
-                            res_data["type"] = "table"
-                        with task["lock"]:
-                            task["results"][idx] = (img_p, res_data)
-                        log_progress(f"提取项 {idx + 1}/{total} 识别完成。")
-                    except Exception as exc:
-                        if "Task stopped by user" in str(exc) or task["status"] == "stopped":
-                            continue
-                        log_progress(f"提取项 {idx + 1} 识别失败: {exc}")
-                        with task["lock"]:
-                            task["results"][idx] = (_task_items[idx], {"type": "error", "content": str(exc)})
-                    task["completed_count"] += 1
-                    task["progress"] = int((task["completed_count"] / total) * 100)
-                    compile_task_outputs(task_id)
-
-        if task["status"] == "stopped":
-            log_progress("任务已被用户停止。")
-            return
-
-        compile_task_outputs(task_id)
-        task["progress"] = 100
-        task["status"] = "completed"
-        log_progress("队列中所有对象提取与报告合并编译全部完成！")
+        task["status"] = "waiting_review"
+        task["task_type"] = "upload"
         name = url if url else ", ".join([os.path.basename(p) for p in file_paths])
-        add_to_history(task_id, name, "url" if url else "upload", output_dir)
+        add_to_history(task_id, name, "url" if url else "upload", output_dir, "waiting_review")
+        log_progress("切片生成完毕，等待用户进行审查与确认...")
 
     except Exception as e:
         task["status"] = "failed"
@@ -1523,16 +1395,7 @@ async def get_task_events(task_id: str) -> EventSourceResponse:
         for k, v in results_copy.items():
             img_path = v[0]
             res_data = v[1]
-            normalized_path = img_path.replace("\\", "/")
-            if "/output/" in normalized_path:
-                idx = normalized_path.rindex("/output/")
-                url_path = normalized_path[idx+1:]
-            else:
-                try:
-                    rel = os.path.relpath(img_path, OUTPUT_DIR).replace("\\", "/")
-                    url_path = f"output/{rel}"
-                except Exception:
-                    url_path = normalized_path
+            url_path = _get_relative_url(img_path)
             formatted_results[str(k)] = [
                 url_path, 
                 {
@@ -1585,22 +1448,30 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
     loop = asyncio.get_running_loop()
     config = task.get("config", {"api_type": "Local OCR", "api_key": "", "base_url": "", "model_name": ""})
 
-    url = task.get("url", "")
-    if (url.startswith("上传: ") or url.startswith("合并提取: ")) and (task.get("file_paths") or task.get("file_path")):
-        file_paths = task.get("file_paths") or [task["file_path"]]
-        output_dir = task.get("output_dir")
-        merged_url = task.get("merged_url", "")
+    if task.get("image_paths"):
+        # 切片已生成，直接重试识别分析阶段
         thread = threading.Thread(
-            target=run_upload_task,
-            args=(task_id, file_paths, config, loop, output_dir, merged_url),
+            target=run_analysis_phase,
+            args=(task_id, loop),
             daemon=True
         )
     else:
-        thread = threading.Thread(
-            target=run_extraction_task,
-            args=(task_id, url, config, loop),
-            daemon=True
-        )
+        url = task.get("url", "")
+        if (url.startswith("上传: ") or url.startswith("合并提取: ")) and (task.get("file_paths") or task.get("file_path")):
+            file_paths = task.get("file_paths") or [task["file_path"]]
+            output_dir = task.get("output_dir")
+            merged_url = task.get("merged_url", "")
+            thread = threading.Thread(
+                target=run_upload_task,
+                args=(task_id, file_paths, config, loop, output_dir, merged_url),
+                daemon=True
+            )
+        else:
+            thread = threading.Thread(
+                target=run_extraction_task,
+                args=(task_id, url, config, loop),
+                daemon=True
+            )
 
     thread.start()
     return {"status": "success"}
@@ -1642,13 +1513,217 @@ async def stop_task(task_id: str) -> Dict[str, Any]:
     if task_id not in tasks_db:
         raise HTTPException(status_code=404, detail="Task not found")
     task = tasks_db[task_id]
-    if task["status"] not in ["running", "paused"]:
-        raise HTTPException(status_code=400, detail="Only running or paused tasks can be stopped")
+    if task["status"] not in ["running", "paused", "waiting_review"]:
+        raise HTTPException(status_code=400, detail="Only running, paused or waiting review tasks can be stopped")
     task["status"] = "stopped"
     task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 任务被用户手动停止。")
     if task_id in tasks_events:
         tasks_events[task_id].set()
     return {"status": "stopped"}
+
+
+def run_analysis_phase(task_id: str, loop: asyncio.AbstractEventLoop) -> None:
+    """第二阶段：并发提取识别切片并编译输出文档"""
+    task = tasks_db[task_id]
+    
+    def log_progress(msg: str) -> None:
+        logger.info(f"[{task_id}] {msg}")
+        task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
+        if task_id in tasks_events:
+            loop.call_soon_threadsafe(tasks_events[task_id].set)
+
+    try:
+        task["status"] = "running"
+        config = task["config"]
+        output_dir = task["output_dir"]
+        image_paths = task["image_paths"]
+        
+        # 将历史记录状态更新为 running
+        url = task.get("url", "")
+        task_type = task.get("task_type", "url")
+        if task_type == "url":
+            add_to_history(task_id, url, "url", output_dir, "running")
+        else:
+            file_paths = task.get("file_paths", [])
+            merged_url = task.get("merged_url", "")
+            name = merged_url if merged_url else ", ".join([os.path.basename(p) for p in file_paths])
+            add_to_history(task_id, name, "url" if merged_url else "upload", output_dir, "running")
+
+        total_images = len(image_paths)
+        if total_images == 0:
+            log_progress("警告: 没有需要处理的切片项目。")
+            task["status"] = "completed"
+            task["progress"] = 100
+            compile_task_outputs(task_id)
+            if task_type == "url":
+                add_to_history(task_id, url, "url", output_dir)
+            else:
+                add_to_history(task_id, name, "url" if merged_url else "upload", output_dir)
+            return
+
+        log_progress(f"开始使用 {config['api_type']} 引擎处理 {total_images} 个切片...")
+
+        analyzer = ImageAnalyzer(
+            api_type=config["api_type"],
+            api_key=config["api_key"],
+            base_url=config["base_url"],
+            model_name=config["model_name"],
+            split_len=config.get("split_len"),
+            split_regex=config.get("split_regex")
+        )
+
+        _image_paths = list(image_paths)
+        _output_dir = output_dir
+
+        def process_single_image(idx: int):
+            while task["status"] == "paused":
+                time.sleep(0.5)
+            if task["status"] == "stopped":
+                raise Exception("Task stopped by user")
+
+            path = _image_paths[idx]
+            out_csv = os.path.join(_output_dir, f"table_{idx + 1}.csv")
+            res = analyzer.analyze(path, output_csv_path=out_csv, formats=task.get("formats"))
+
+            if task["status"] == "stopped":
+                raise Exception("Task stopped by user")
+
+            out_md = os.path.join(_output_dir, f"slice_{idx + 1}.md")
+            with open(out_md, "w", encoding="utf-8") as f:
+                if res["type"] in ["text", "table"]:
+                    f.write(res["content"])
+                elif res["type"] == "image":
+                    f.write("RETAIN_IMAGE")
+                else:
+                    f.write(res["content"])
+            return idx, path, res
+
+        unprocessed_indices = [i for i in range(total_images) if i not in task["results"]]
+        task["current_processing"] = set(unprocessed_indices)
+        if task_id in tasks_events:
+            loop.call_soon_threadsafe(tasks_events[task_id].set)
+
+        if unprocessed_indices:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future_to_idx = {executor.submit(process_single_image, i): i for i in unprocessed_indices}
+                for future in concurrent.futures.as_completed(future_to_idx):
+                    if task["status"] == "stopped":
+                        break
+                    idx = future_to_idx[future]
+                    task["current_processing"].discard(idx)
+                    try:
+                        _, img_p, res_data = future.result()
+                        if res_data["type"] != "image" and has_markdown_table(res_data.get("content", "")):
+                            res_data["type"] = "table"
+                        with task["lock"]:
+                            task["results"][idx] = (img_p, res_data)
+                        log_progress(f"分片 {idx + 1}/{total_images} 识别完成。")
+                    except Exception as exc:
+                        if "Task stopped by user" in str(exc) or task["status"] == "stopped":
+                            continue
+                        log_progress(f"分片 {idx + 1} 识别失败: {exc}")
+                        with task["lock"]:
+                            task["results"][idx] = (_image_paths[idx], {"type": "error", "content": str(exc)})
+
+                    task["completed_count"] += 1
+                    task["progress"] = int((task["completed_count"] / total_images) * 100)
+                    compile_task_outputs(task_id)
+
+        if task["status"] == "stopped":
+            log_progress("任务已被用户停止。")
+            return
+
+        log_progress("正在进行多格式文档合并编译...")
+        compile_task_outputs(task_id)
+        log_progress("恭喜！网页多模态提取任务全部完成，报告已生成。")
+        task["progress"] = 100
+        task["status"] = "completed"
+        
+        if task_type == "url":
+            add_to_history(task_id, url, "url", output_dir)
+        else:
+            add_to_history(task_id, name, "url" if merged_url else "upload", output_dir)
+
+    except Exception as e:
+        task["status"] = "failed"
+        task["error"] = str(e)
+        log_progress(f"任务执行中遭遇严重错误崩溃: {e}")
+        logger.exception(e)
+
+
+@app.get("/api/slices/{task_id}")
+async def get_slices(task_id: str) -> Dict[str, Any]:
+    """获取指定任务已生成的切片列表"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    slices = []
+    for idx, path in enumerate(task["image_paths"]):
+        slices.append({
+            "index": idx,
+            "url": "/" + _get_relative_url(path)
+        })
+    return {"status": "success", "slices": slices}
+
+
+@app.post("/api/slices/{task_id}/delete")
+async def delete_slices(task_id: str, data: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """批量删除指定的切片"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    indices_to_delete = sorted(data.get("indices", []), reverse=True)
+    
+    deleted_files = []
+    with task["lock"]:
+        for idx in indices_to_delete:
+            if 0 <= idx < len(task["image_paths"]):
+                img_path = task["image_paths"].pop(idx)
+                deleted_files.append(img_path)
+                if os.path.exists(img_path):
+                    try:
+                        os.remove(img_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to delete slice file {img_path}: {e}")
+        
+        task["total_count"] = len(task["image_paths"])
+        
+        # 保存更新后的切片路径 JSON
+        output_dir = task.get("output_dir")
+        if output_dir and os.path.exists(output_dir):
+            image_paths_file = os.path.join(output_dir, "image_paths.json")
+            with open(image_paths_file, "w", encoding="utf-8") as f:
+                json.dump(task["image_paths"], f, ensure_ascii=False, indent=4)
+                
+    task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 用户删除了 {len(deleted_files)} 个切片。当前剩余 {task['total_count']} 个切片。")
+    if task_id in tasks_events:
+        tasks_events[task_id].set()
+        
+    return {"status": "success", "remaining_count": task["total_count"]}
+
+
+@app.post("/api/slices/{task_id}/continue")
+async def continue_task_review(task_id: str) -> Dict[str, Any]:
+    """审查完切片后继续执行分析提取"""
+    if task_id not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task = tasks_db[task_id]
+    if task["status"] != "waiting_review":
+        raise HTTPException(status_code=400, detail="Task is not in waiting_review status")
+
+    task["status"] = "running"
+    task["logs"].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 用户已确认切片，开始识别提取任务。")
+    if task_id in tasks_events:
+        tasks_events[task_id].set()
+
+    loop = asyncio.get_running_loop()
+    thread = threading.Thread(
+        target=run_analysis_phase,
+        args=(task_id, loop),
+        daemon=True
+    )
+    thread.start()
+    return {"status": "success"}
 
 
 @app.get("/api/history")
