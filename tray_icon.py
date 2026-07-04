@@ -61,7 +61,7 @@ def main():
     server_thread.start()
 
     # 3. Create tray icon
-    logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.jpg")
+    logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
     try:
         image = Image.open(logo_path)
     except Exception:

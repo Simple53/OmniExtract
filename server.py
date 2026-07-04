@@ -100,8 +100,15 @@ else:
     DATA_DIR = BASE_DIR
 
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
-HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 OUTPUT_DIR = os.path.join(DATA_DIR, "output")
+
+# 清理遗留的 history.json 文件
+legacy_history = os.path.join(DATA_DIR, "history.json")
+if os.path.exists(legacy_history):
+    try:
+        os.remove(legacy_history)
+    except Exception:
+        pass
 
 # 全局任务状态存储
 tasks_db: Dict[str, Dict[str, Any]] = {}
@@ -128,8 +135,8 @@ def save_configs(configs: Dict[str, Any]) -> None:
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(configs, f, ensure_ascii=False, indent=4)
 
-def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: str):
-    """Add a successful task to history records"""
+def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: str, status: str = "completed"):
+    """记录或更新任务历史记录到 task_history.json"""
     history_file = os.path.join(DATA_DIR, "task_history.json")
     history_list = []
     if os.path.exists(history_file):
@@ -139,20 +146,33 @@ def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: s
         except Exception:
             pass
             
-    # Avoid duplicate records for the same task_id
-    if any(item.get("task_id") == task_id for item in history_list):
-        return
-        
+    # 查找是否已有该 task_id 的记录
+    existing_item = None
+    for item in history_list:
+        if item.get("task_id") == task_id:
+            existing_item = item
+            break
+            
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    history_list.append({
-        "task_id": task_id,
-        "name": url_or_name,
-        "type": task_type, # "url" or "upload"
-        "output_dir": output_dir,
-        "timestamp": timestamp
-    })
+    if existing_item:
+        # 更新现有记录
+        existing_item["status"] = status
+        if url_or_name:
+            existing_item["name"] = url_or_name
+        if output_dir:
+            existing_item["output_dir"] = output_dir
+    else:
+        # 添加新记录
+        history_list.append({
+            "task_id": task_id,
+            "name": url_or_name,
+            "type": task_type, # "url" or "upload"
+            "output_dir": output_dir,
+            "timestamp": timestamp,
+            "status": status
+        })
     
-    # Keep up to 100 history records
+    # 保持最多 100 条记录
     if len(history_list) > 100:
         history_list = history_list[-100:]
         
@@ -162,20 +182,22 @@ def add_to_history(task_id: str, url_or_name: str, task_type: str, output_dir: s
     except Exception as e:
         logger.error(f"Failed to save task history: {e}")
 
-def load_history() -> Dict[str, str]:
-    """加载历史记录"""
-    if os.path.exists(HISTORY_FILE):
+def get_output_dir_by_url(url: str) -> Optional[str]:
+    """通过 URL 从 task_history.json 中查询对应的输出目录"""
+    history_file = os.path.join(DATA_DIR, "task_history.json")
+    if os.path.exists(history_file):
         try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            logger.warning(f"历史记录读取失败: {e}")
-    return {}
-
-def save_history(history: Dict[str, str]) -> None:
-    """保存历史记录"""
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=4)
+            with open(history_file, "r", encoding="utf-8") as f:
+                history_list = json.load(f)
+                # 倒序查找最新的匹配记录
+                for item in reversed(history_list):
+                    if item.get("type") == "url" and item.get("name") == url:
+                        out_dir = item.get("output_dir")
+                        if out_dir and os.path.exists(out_dir):
+                            return out_dir
+        except Exception as e:
+            logger.warning(f"读取任务历史记录失败: {e}")
+    return None
 
 def strip_code_fence(text: str) -> str:
     """去除 Markdown 代码围栏"""
@@ -736,8 +758,7 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
     try:
         log_progress("开始处理网页链接...")
 
-        history = load_history()
-        output_dir = history.get(url)
+        output_dir = get_output_dir_by_url(url)
         image_paths_file = os.path.join(output_dir, "image_paths.json") if output_dir else ""
 
         breakpoint_hit = False
@@ -787,8 +808,7 @@ def run_extraction_task(task_id: str, url: str, config: Dict[str, Any], loop: as
             os.makedirs(output_dir, exist_ok=True)
             task["output_dir"] = output_dir
 
-            history[url] = output_dir
-            save_history(history)
+            add_to_history(task_id, url, "url", output_dir, "running")
 
             log_progress("正在初始化抓取网页并提取大图...")
             scraper = WebScraper(output_dir=output_dir)
@@ -1323,8 +1343,7 @@ async def start_extract(data: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
             "api_type": "Local OCR", "api_key": "", "base_url": "", "model_name": ""
         }
 
-    history = load_history()
-    output_dir = history.get(url)
+    output_dir = get_output_dir_by_url(url)
     has_report = False
     if output_dir and os.path.exists(output_dir):
         report_files = [

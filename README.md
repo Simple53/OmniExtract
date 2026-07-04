@@ -162,10 +162,11 @@ OmniExtract/
 ├── 启动(后台无窗口).vbs    # Windows 一键后台静默启动脚本 (Windows Background Silent Startup Script)
 ├── 停止(关闭后台).bat      # Windows 一键停止后台服务脚本 (Windows Stop Background Server Script)
 ├── static/
-│   ├── logo.jpg           # 应用图标 (Logo Image)
-│   ├── logo.ico           # Windows EXE 图标 (EXE Icon)
-│   ├── logo_128x128.ico   # 128x128 尺寸图标 (128x128 Icon)
-│   ├── logo_256x256.ico   # 256x256 尺寸图标 (256x256 Icon)
+│   ├── logo.png           # 透明背景主图标 (Main Logo Image)
+│   ├── logo.ico           # Windows 多分辨率图标 (Windows multi-res Icon)
+│   ├── logo_dark.ico      # 暗色调多分辨率图标 (Dark theme multi-res Icon)
+│   ├── logo_dark.jpg      # 备用暗色背景图 (Alternative dark background image)
+│   ├── logo_[size].png    # 各尺寸分级适配图标 (Icon images of various sizes)
 │   ├── css/all.min.css    # FontAwesome 图标库
 │   ├── js/marked.min.js   # Markdown 渲染库
 │   └── webfonts/          # 字体文件
