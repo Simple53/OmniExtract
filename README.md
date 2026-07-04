@@ -157,7 +157,10 @@ OmniExtract/
 ├── index.html             # 前端单页应用 (Single-page App)
 ├── requirements.txt       # Python 依赖清单
 ├── Dockerfile             # Docker 容器构建文件
-├── start.bat              # Windows 一键启动脚本
+├── start.bat              # Windows 一键前台启动脚本 (Windows Foreground Startup Script)
+├── tray_icon.py           # 托盘管理与后台运行服务 (System Tray & Background Manager)
+├── 启动(后台无窗口).vbs    # Windows 一键后台静默启动脚本 (Windows Background Silent Startup Script)
+├── 停止(关闭后台).bat      # Windows 一键停止后台服务脚本 (Windows Stop Background Server Script)
 ├── static/
 │   ├── logo.jpg           # 应用图标 (Logo Image)
 │   ├── logo.ico           # Windows EXE 图标 (EXE Icon)

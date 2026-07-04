@@ -65,7 +65,8 @@ echo [√] 依赖包安装完成。
 if not exist output mkdir output
 
 :: 3. 启动服务
-echo [3/3] 正在拉起后端服务...
+echo [3/3] 正在拉起后端服务并加载系统托盘...
+
 echo.
 echo  -------------------------------------------------
 echo   服务地址: http://127.0.0.1:8000
@@ -74,9 +75,10 @@ echo   按 Ctrl+C 可以随时停止运行
 echo  -------------------------------------------------
 echo.
 
-start http://127.0.0.1:8000
+:: start http://127.0.0.1:8000
 
-.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload
+.venv\Scripts\python.exe tray_icon.py
+
 
 echo.
 echo 服务已停止退出。
