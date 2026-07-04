@@ -64,12 +64,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/full dist/lite
-          cp dist/OmniExtract-full-macos dist/full/
-          cp dist/OmniExtract-lite-macos dist/lite/
+          cp -r dist/OmniExtract-full-macos.app dist/full/
+          cp -r dist/OmniExtract-lite-macos.app dist/lite/
+          
+          # Create a symlink to /Applications in the DMG for easy installation
+          ln -s /Applications dist/full/Applications
+          ln -s /Applications dist/lite/Applications
+          
           hdiutil create -volname "OmniExtract-full" -srcfolder dist/full/ -ov -format UDZO dist/OmniExtract-full-macos.dmg
           hdiutil create -volname "OmniExtract-lite" -srcfolder dist/lite/ -ov -format UDZO dist/OmniExtract-lite-macos.dmg
           rm -rf dist/full dist/lite
-          rm dist/OmniExtract-full-macos dist/OmniExtract-lite-macos
+          rm -rf dist/OmniExtract-full-macos.app dist/OmniExtract-lite-macos.app dist/OmniExtract-full-macos dist/OmniExtract-lite-macos
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
