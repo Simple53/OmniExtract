@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="static/logo.png" alt="OmniExtract Logo" width="100" style="border-radius: 32px;" />
+<img src="static/logo.png" alt="OmniExtract Logo" width="150" style="border-radius: 16px;" />
 
 # OmniExtract 万象多模态提取引擎 / Multimodal Extraction Engine
 
