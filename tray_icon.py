@@ -11,9 +11,17 @@ import time
 import webbrowser
 import logging
 
+if getattr(sys, 'frozen', False):
+    # PyInstaller temp directory for bundled files (logo)
+    bundle_dir = sys._MEIPASS
+    # Directory containing the actual .exe for logs and output
+    data_dir = os.path.dirname(sys.executable)
+else:
+    bundle_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = bundle_dir
+
 # 日志配置：始终写入文件，确保无窗口模式下不因 stdout=None 而崩溃
-base_dir = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.join(base_dir, "server.log")
+log_file = os.path.join(data_dir, "server.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -71,7 +79,7 @@ def on_open_webpage(icon, item):
 def on_open_output(icon, item):
     """打开输出目录"""
     logger.info("Tray menu: Open Output Directory")
-    output_dir = os.path.join(base_dir, "output")
+    output_dir = os.path.join(data_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
     try:
         os.startfile(output_dir)
@@ -94,7 +102,7 @@ def main():
     server_thread.start()
 
     # 2. 加载托盘图标（透明背景 PNG）
-    logo_path = os.path.join(base_dir, "static", "logo.png")
+    logo_path = os.path.join(bundle_dir, "static", "logo.png")
     if os.path.exists(logo_path):
         try:
             image = Image.open(logo_path)
@@ -141,12 +149,7 @@ def main():
         menu=menu
     )
 
-    # 4. 等待 uvicorn 绑定端口后自动打开浏览器
-    def delayed_open_browser():
-        time.sleep(2.0)
-        webbrowser.open("http://127.0.0.1:8000")
-
-    threading.Thread(target=delayed_open_browser, daemon=True).start()
+    # uvicorn 会在 lifespan 中自动触发打开浏览器，此处不再重复调用
 
     # 5. 在主线程中阻塞运行托盘（pystray 要求主线程）
     logger.info("Tray icon running. Right-click to see menu.")

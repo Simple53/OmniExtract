@@ -52,10 +52,10 @@ jobs:
         shell: bash
         run: |
           # Build Full Version (with local OCR)
-          pyinstaller --onefile --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} server.py -n OmniExtract-full-${{ matrix.platform }}${{ matrix.ext }}
+          pyinstaller --onefile --windowed --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} tray_icon.py -n OmniExtract-full-${{ matrix.platform }}${{ matrix.ext }}
 
           # Build Lite Version (without local OCR)
-          pyinstaller --onefile --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} --exclude-module rapidocr_onnxruntime --exclude-module onnxruntime --exclude-module cv2 server.py -n OmniExtract-lite-${{ matrix.platform }}${{ matrix.ext }}
+          pyinstaller --onefile --windowed --add-data "static${{ matrix.sep }}static" --add-data "index.html${{ matrix.sep }}." ${{ matrix.icon }} --exclude-module rapidocr_onnxruntime --exclude-module onnxruntime --exclude-module cv2 tray_icon.py -n OmniExtract-lite-${{ matrix.platform }}${{ matrix.ext }}
 
       - name: Package DMG (macOS only)
         if: matrix.os == 'macos-latest'
