@@ -105,12 +105,33 @@ def main():
         logger.warning("logo.png not found, using fallback icon.")
         image = Image.new("RGBA", (64, 64), (59, 130, 246, 255))
 
-    # 3. 定义托盘右键菜单
+    # 3. 检测系统语言，决定托盘菜单文字
+    is_chinese = False
+    try:
+        import ctypes
+        lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        # Chinese language IDs: 0x0804 (zh-CN), 0x0404 (zh-TW), 0x0C04 (zh-HK)
+        is_chinese = (lang_id & 0xFF) == 0x04
+    except Exception:
+        import locale
+        sys_lang = locale.getdefaultlocale()[0] or ""
+        is_chinese = sys_lang.startswith("zh")
+
+    if is_chinese:
+        label_open = "打开网页界面"
+        label_output = "打开输出目录"
+        label_exit = "退出"
+    else:
+        label_open = "Open Webpage"
+        label_output = "Open Output Folder"
+        label_exit = "Exit"
+
+    # 4. 定义托盘右键菜单
     menu = pystray.Menu(
-        pystray.MenuItem("Open Webpage", on_open_webpage, default=True),
-        pystray.MenuItem("Open Output Folder", on_open_output),
+        pystray.MenuItem(label_open, on_open_webpage, default=True),
+        pystray.MenuItem(label_output, on_open_output),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Exit", on_exit)
+        pystray.MenuItem(label_exit, on_exit)
     )
 
     icon = pystray.Icon(

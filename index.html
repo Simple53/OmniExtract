@@ -507,11 +507,12 @@
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.5rem; background: var(--card-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem;">
         <h1 style="display:flex; align-items:center; gap:0.75rem; margin: 0;"><img src="/static/logo.png" alt="Logo" style="width:34px; height:34px; object-fit:contain;"> <span style="font-size:1.3rem; font-weight:700; background: var(--logo-text-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.015em;">万象 OmniExtract</span></h1>
         <nav class="unified-nav" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-            <button class="nav-item-btn" onclick="scrollToIntro()" title="项目简介"><i class="fa-solid fa-circle-info"></i> <span>简介</span></button>
-            <button class="nav-item-btn" onclick="showUsageModal()" title="使用指南"><i class="fa-solid fa-book-open"></i> <span>使用</span></button>
-            <button class="nav-item-btn" id="theme-toggle-btn" title="切换主题"><i class="fa-solid fa-moon" id="theme-icon"></i> <span>主题</span></button>
-            <button class="nav-item-btn" id="toggle-sidebar-btn" title="API配置"><i class="fa-solid fa-sliders"></i> <span id="toggle-sidebar-text">隐藏配置</span></button>
-            <button class="nav-item-btn" onclick="toggleHistoryDrawer()" title="历史记录"><i class="fa-solid fa-history"></i> <span>历史记录</span><span id="history-badge" class="badge-accent" style="display:none; margin-left: 4px;">0</span></button>
+            <button class="nav-item-btn" onclick="scrollToIntro()" title="项目简介"><i class="fa-solid fa-circle-info"></i> <span data-i18n="nav_intro">简介</span></button>
+            <button class="nav-item-btn" onclick="showUsageModal()" title="使用指南"><i class="fa-solid fa-book-open"></i> <span data-i18n="nav_usage">使用</span></button>
+            <button class="nav-item-btn" id="theme-toggle-btn" title="切换主题"><i class="fa-solid fa-moon" id="theme-icon"></i> <span data-i18n="nav_theme">主题</span></button>
+            <button class="nav-item-btn" id="toggle-sidebar-btn" title="API配置"><i class="fa-solid fa-sliders"></i> <span id="toggle-sidebar-text" data-i18n="nav_hide_config">隐藏配置</span></button>
+            <button class="nav-item-btn" onclick="toggleHistoryDrawer()" title="历史记录"><i class="fa-solid fa-history"></i> <span data-i18n="nav_history">历史记录</span><span id="history-badge" class="badge-accent" style="display:none; margin-left: 4px;">0</span></button>
+            <button class="nav-item-btn" id="lang-toggle-btn" title="切换语言 / Language" onclick="toggleLanguage()"><i class="fa-solid fa-language"></i> <span id="lang-text">EN</span></button>
             <a class="nav-item-btn" href="https://github.com/Simple53/OmniExtract" target="_blank" title="GitHub 仓库" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-brands fa-github" style="font-size: 1.05rem;"></i></a>
         </nav>
     </header>
@@ -2187,5 +2188,113 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 </script>
+
+    <!-- i18n Script -->
+    <script>
+        const i18nDict = {
+            "简介": "About",
+            "项目简介": "About Project",
+            "使用": "Usage",
+            "使用指南": "User Guide",
+            "主题": "Theme",
+            "切换主题": "Toggle Theme",
+            "隐藏配置": "Hide Config",
+            "显示配置": "Show Config",
+            "API配置": "API Config",
+            "历史记录": "History",
+            "万象 OmniExtract": "OmniExtract",
+            "上传本地图片进行 OCR 提取": "Upload local image for OCR",
+            "或者": "Or",
+            "输入网页URL以抓取内容": "Enter Webpage URL to extract content",
+            "开始提取": "Extract",
+            "拖拽图片到这里，或点击上传": "Drag & drop image here, or click to upload",
+            "正在处理中...": "Processing...",
+            "网页内容抓取中...": "Scraping webpage...",
+            "图像处理与分析中...": "Analyzing image...",
+            "清空历史": "Clear History",
+            "输出目录": "Output Folder"
+        };
+        
+        let currentLang = localStorage.getItem("lang") || "zh";
+        
+        function applyLanguage() {
+            const isEn = currentLang === "en";
+            document.getElementById("lang-text").textContent = isEn ? "中" : "EN";
+            
+            // Translate data-i18n attributes
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (key === 'nav_intro') el.textContent = isEn ? i18nDict["简介"] : "简介";
+                if (key === 'nav_usage') el.textContent = isEn ? i18nDict["使用"] : "使用";
+                if (key === 'nav_theme') el.textContent = isEn ? i18nDict["主题"] : "主题";
+                if (key === 'nav_hide_config') {
+                    const isHidden = el.textContent.includes('显示') || el.textContent.includes('Show');
+                    el.textContent = isEn ? (isHidden ? i18nDict["显示配置"] : i18nDict["隐藏配置"]) : (isHidden ? "显示配置" : "隐藏配置");
+                }
+                if (key === 'nav_history') el.textContent = isEn ? i18nDict["历史记录"] : "历史记录";
+            });
+            
+            // Translate titles
+            document.querySelectorAll('[title]').forEach(el => {
+                const orig = el.getAttribute('data-orig-title') || el.getAttribute('title');
+                if (!el.getAttribute('data-orig-title')) {
+                    el.setAttribute('data-orig-title', orig);
+                }
+                if (isEn && i18nDict[orig]) {
+                    el.setAttribute('title', i18nDict[orig]);
+                } else if (!isEn && el.getAttribute('data-orig-title')) {
+                    el.setAttribute('title', el.getAttribute('data-orig-title'));
+                }
+            });
+            
+            // Simple text replacement for common elements
+            const walkDOM = function(node) {
+                if (node.nodeType === 3) { // Text node
+                    const text = node.nodeValue.trim();
+                    if (text) {
+                        if (!node.origText) node.origText = text;
+                        if (isEn && i18nDict[node.origText]) {
+                            node.nodeValue = node.nodeValue.replace(node.origText, i18nDict[node.origText]);
+                        } else if (!isEn && node.origText) {
+                            // Only restore if it was translated
+                            const engText = i18nDict[node.origText];
+                            if (engText && node.nodeValue.includes(engText)) {
+                                node.nodeValue = node.nodeValue.replace(engText, node.origText);
+                            }
+                        }
+                    }
+                } else if (node.nodeType === 1 && node.nodeName !== "SCRIPT" && node.nodeName !== "STYLE") {
+                    // Also check placeholders
+                    if (node.placeholder) {
+                        if (!node.origPlaceholder) node.origPlaceholder = node.placeholder;
+                        if (isEn && i18nDict[node.origPlaceholder]) {
+                            node.placeholder = i18nDict[node.origPlaceholder];
+                        } else if (!isEn && node.origPlaceholder) {
+                            node.placeholder = node.origPlaceholder;
+                        }
+                    }
+                    for (let i = 0; i < node.childNodes.length; i++) {
+                        walkDOM(node.childNodes[i]);
+                    }
+                }
+            };
+            
+            walkDOM(document.body);
+        }
+        
+        function toggleLanguage() {
+            currentLang = currentLang === "zh" ? "en" : "zh";
+            localStorage.setItem("lang", currentLang);
+            applyLanguage();
+        }
+        
+        // Apply on load
+        document.addEventListener("DOMContentLoaded", () => {
+            if (currentLang === "en") {
+                applyLanguage();
+            }
+        });
+    </script>
+
 </body>
 </html>
