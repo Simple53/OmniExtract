@@ -1,117 +1,136 @@
+"""
+OmniExtract 系统托盘管理器
+- 后台启动 uvicorn 服务
+- 系统托盘图标常驻，支持打开网页、打开输出目录、退出
+- 支持有窗口和无窗口两种运行模式
+"""
 import os
 import sys
-import ctypes
 import threading
 import time
 import webbrowser
+import logging
+
+# 日志配置：始终写入文件，确保无窗口模式下不因 stdout=None 而崩溃
+base_dir = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(base_dir, "server.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.FileHandler(log_file, encoding="utf-8")]
+)
+logger = logging.getLogger("TrayIcon")
+
+# 在无窗口模式 (pythonw.exe) 下，sys.stdout/stderr 为 None，
+# 所有 print() 和 uvicorn 的日志输出都会抛 AttributeError 导致崩溃。
+# 将它们重定向到日志文件。
+if sys.stdout is None or sys.stderr is None:
+    _log_stream = open(log_file, "a", encoding="utf-8", buffering=1)
+    sys.stdout = _log_stream
+    sys.stderr = _log_stream
+
+# 清除 Conda 环境变量干扰
+for key in list(os.environ.keys()):
+    if "CONDA" in key.upper():
+        del os.environ[key]
+
 import uvicorn
 from PIL import Image
 import pystray
 
-# Window management on Windows
-hwnd = None
-if sys.platform == "win32":
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+try:
+    from server import app
+except Exception as e:
+    logger.exception("Failed to import FastAPI app from server.py:")
+    sys.exit(1)
 
-def disable_close_button():
-    if hwnd:
-        # Get system menu of the console window
-        hmenu = ctypes.windll.user32.GetSystemMenu(hwnd, False)
-        if hmenu:
-            # Disable (gray out) the Close (X) button
-            ctypes.windll.user32.EnableMenuItem(hmenu, 0xF060, 1 | 2) # SC_CLOSE, MF_GRAYED | MF_DISABLED
-
-def hide_console():
-    if hwnd:
-        ctypes.windll.user32.ShowWindow(hwnd, 0)  # SW_HIDE
-
-def show_console():
-    if hwnd:
-        ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW
-        # Set focus to console window
-        ctypes.windll.user32.SetForegroundWindow(hwnd)
-
-def open_webpage():
-    webbrowser.open("http://127.0.0.1:8000")
 
 def run_server():
-    from server import app
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    """在子线程中启动 uvicorn 服务"""
+    try:
+        config = uvicorn.Config(
+            app,
+            host="127.0.0.1",
+            port=8000,
+            log_level="info"
+        )
+        config.install_signal_handlers = False
+        server = uvicorn.Server(config)
+        server.run()
+    except Exception as e:
+        logger.exception("Uvicorn server crashed:")
 
-def on_exit(icon, item=None):
-    if icon:
-        icon.stop()
-    # Force exit the entire process and all threads
+
+def on_open_webpage(icon, item):
+    """打开网页界面"""
+    logger.info("Tray menu: Open Webpage")
+    webbrowser.open("http://127.0.0.1:8000")
+
+
+def on_open_output(icon, item):
+    """打开输出目录"""
+    logger.info("Tray menu: Open Output Directory")
+    output_dir = os.path.join(base_dir, "output")
+    os.makedirs(output_dir, exist_ok=True)
+    try:
+        os.startfile(output_dir)
+    except Exception as e:
+        logger.error(f"Failed to open output directory: {e}")
+
+
+def on_exit(icon, item):
+    """退出应用"""
+    logger.info("Tray menu: Exit")
+    icon.stop()
     os._exit(0)
 
+
 def main():
-    # 1. Disable console close button to prevent accidental clicks
-    disable_close_button()
+    logger.info("Starting OmniExtract tray manager...")
 
-    print("==================================================================")
-    print("  OmniExtract (万象多模态提取引擎) 服务正在启动...")
-    print("  提示: 窗口右上角的 '关闭 (X)' 按钮已被禁用以防止意外退出。")
-    print("  - 如需隐藏控制台，请右击系统托盘图标选择 '隐藏控制台'。")
-    print("  - 如需完全退出服务，请在控制台按 Ctrl+C，或右击托盘选择 '退出'。")
-    print("==================================================================")
-    print()
-
-    # 2. Start uvicorn server in a daemon thread
+    # 1. 启动后台服务线程
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
 
-    # 3. Create tray icon
-    logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
-    try:
-        image = Image.open(logo_path)
-    except Exception:
-        image = Image.new("RGB", (64, 64), color="blue")
+    # 2. 加载托盘图标（透明背景 PNG）
+    logo_path = os.path.join(base_dir, "static", "logo.png")
+    if os.path.exists(logo_path):
+        try:
+            image = Image.open(logo_path)
+        except Exception as e:
+            logger.error(f"Failed to load logo.png: {e}")
+            image = Image.new("RGBA", (64, 64), (59, 130, 246, 255))
+    else:
+        logger.warning("logo.png not found, using fallback icon.")
+        image = Image.new("RGBA", (64, 64), (59, 130, 246, 255))
 
+    # 3. 定义托盘右键菜单
     menu = pystray.Menu(
-        pystray.MenuItem("打开网页 (Open Webpage)", lambda: open_webpage()),
-        pystray.MenuItem("显示控制台 (Show Console)", lambda: show_console()),
-        pystray.MenuItem("隐藏控制台 (Hide Console)", lambda: hide_console()),
+        pystray.MenuItem("Open Webpage", on_open_webpage, default=True),
+        pystray.MenuItem("Open Output Folder", on_open_output),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem("退出服务 (Exit)", lambda icon, item: on_exit(icon, item))
+        pystray.MenuItem("Exit", on_exit)
     )
 
     icon = pystray.Icon(
-        "omniextract",
+        "OmniExtract",
         image,
-        "万象 OmniExtract",
+        "OmniExtract",
         menu=menu
     )
 
-    # Start tray icon in a separate thread so main thread can catch Ctrl+C
-    tray_thread = threading.Thread(target=icon.run, daemon=True)
-    tray_thread.start()
+    # 4. 等待 uvicorn 绑定端口后自动打开浏览器
+    def delayed_open_browser():
+        time.sleep(2.0)
+        webbrowser.open("http://127.0.0.1:8000")
 
-    # 4. Open webpage in browser automatically
-    # Wait a brief moment for uvicorn to bind to port
-    time.sleep(1.0)
-    open_webpage()
+    threading.Thread(target=delayed_open_browser, daemon=True).start()
 
-    # 5. Main loop to catch Ctrl+C and prompt the user
-    while True:
-        try:
-            while True:
-                time.sleep(0.5)
-        except KeyboardInterrupt:
-            # Bring console to front to ensure user sees the prompt
-            show_console()
-            print()
-            try:
-                # Prompt user for action
-                choice = input("检测到 Ctrl+C。是否要完全退出服务？[Y/N] (输入 N 将隐藏并最小化到托盘): ").strip().lower()
-                if choice in ("y", "yes"):
-                    print("正在关闭服务...")
-                    on_exit(icon)
-                else:
-                    hide_console()
-                    print("已最小化并隐藏到系统托盘运行。")
-            except Exception:
-                # Fallback if input fails (e.g. running in non-tty)
-                hide_console()
+    # 5. 在主线程中阻塞运行托盘（pystray 要求主线程）
+    logger.info("Tray icon running. Right-click to see menu.")
+    icon.run()
+
 
 if __name__ == "__main__":
     main()

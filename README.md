@@ -155,18 +155,16 @@ OmniExtract/
 ├── slicer.py              # 基于水平投影的智能图像切片 (Pillow/Numpy)
 ├── analyzer.py            # 多引擎 OCR/VLM 分析与降级 (Multi-engine Analyzer)
 ├── index.html             # 前端单页应用 (Single-page App)
+├── tray_icon.py           # 系统托盘管理与后台运行服务 (System Tray & Background Manager)
+├── start.bat              # Windows 一键启动脚本 (Windows Startup Script)
+├── start_background.vbs   # Windows 后台静默启动 (Windows Background Silent Startup)
+├── stop_server.bat        # Windows 停止后台服务 (Windows Stop Server Script)
 ├── requirements.txt       # Python 依赖清单
 ├── Dockerfile             # Docker 容器构建文件
-├── start.bat              # Windows 一键前台启动脚本 (Windows Foreground Startup Script)
-├── tray_icon.py           # 托盘管理与后台运行服务 (System Tray & Background Manager)
-├── 启动(后台无窗口).vbs    # Windows 一键后台静默启动脚本 (Windows Background Silent Startup Script)
-├── 停止(关闭后台).bat      # Windows 一键停止后台服务脚本 (Windows Stop Background Server Script)
 ├── static/
-│   ├── logo.png           # 透明背景主图标 (Main Logo Image)
+│   ├── logo.png           # 透明背景主图标 (Transparent Logo Image)
 │   ├── logo.ico           # Windows 多分辨率图标 (Windows multi-res Icon)
-│   ├── logo_dark.ico      # 暗色调多分辨率图标 (Dark theme multi-res Icon)
-│   ├── logo_dark.jpg      # 备用暗色背景图 (Alternative dark background image)
-│   ├── logo_[size].png    # 各尺寸分级适配图标 (Icon images of various sizes)
+│   ├── logo_*.png         # 各尺寸分级适配图标 (Multi-size PNG Icons)
 │   ├── css/all.min.css    # FontAwesome 图标库
 │   ├── js/marked.min.js   # Markdown 渲染库
 │   └── webfonts/          # 字体文件
