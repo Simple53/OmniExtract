@@ -2192,109 +2192,217 @@ function escapeHtml(text) {
     <!-- i18n Script -->
     <script>
         const i18nDict = {
+            // 导航栏
             "简介": "About",
-            "项目简介": "About Project",
-            "使用": "Usage",
-            "使用指南": "User Guide",
+            "项目简介": "Project Intro",
+            "使用": "Guide",
+            "使用指南": "Usage Guide",
             "主题": "Theme",
             "切换主题": "Toggle Theme",
             "隐藏配置": "Hide Config",
             "显示配置": "Show Config",
             "API配置": "API Config",
             "历史记录": "History",
-            "万象 OmniExtract": "OmniExtract",
-            "上传本地图片进行 OCR 提取": "Upload local image for OCR",
-            "或者": "Or",
-            "输入网页URL以抓取内容": "Enter Webpage URL to extract content",
-            "开始提取": "Extract",
+            "清空历史": "Clear History",
+            
+            // API配置侧边栏
+            "API 引擎配置": "API Engine Config",
+            "新增/编辑配置": "Add/Edit Config",
+            "配置名称": "Config Name",
+            "如: 我的 MinerU": "e.g., My MinerU",
+            "API 引擎": "API Engine",
+            "模型名称": "Model Name",
+            "vlm (推荐)": "vlm (Recommended)",
+            "首列代码截取长度（可选）": "First Column Chop Length (Optional)",
+            "如 4 表示截取前 4 位，留空为自适应": "e.g. 4 to truncate, leave blank for auto",
+            "首列自定义拆分正则（可选）": "First Column Regex Split (Optional)",
+            "自定义拆分正则，留空为自适应": "Custom regex, leave blank for auto",
+            "保存配置": "Save Config",
+            "新建配置": "New Config",
+            "识别格式偏好设定": "Preference Settings",
+            "纯文本": "Plain Text",
+            "表格": "Table",
+            "图表数据": "Chart Data",
+            "数学公式": "Math Formula",
+            "手写体": "Handwritten",
+            "印章水印": "Seal/Watermark",
+            "化学式": "Chemical Formula",
+            
+            // 主上传与输入区
+            "基于 FastAPI 的极速网页多模态提取引擎": "FastAPI-based High-speed Multimodal Extraction Engine",
+            "上传本地图片进行 OCR 提取": "Upload Local Image for OCR Extraction",
+            "或者": "OR",
+            "输入网页URL以抓取内容": "Enter Webpage URL to Scrape Content",
+            "开始提取": "Start Extraction",
             "拖拽图片到这里，或点击上传": "Drag & drop image here, or click to upload",
+            "万象 OmniExtract": "OmniExtract",
+            
+            // 使用指南弹窗
+            "快速使用指南": "Quick Start Guide",
+            "1. 添加待处理项目：": "1. Add Tasks: ",
+            "您可以点击选择文件、直接拖入本地文件（图片、PDF、PPT 等），也可以在链接输入框中输入待解析的网页 URL。甚至可以直接粘贴截图（Ctrl+V）！": "You can click to select files, drag and drop local files (images, PDF, PPT, etc.), or input target webpage URLs. You can also paste screenshots (Ctrl+V) directly!",
+            "2. 申请并配置 MinerU API：": "2. Get & Configure MinerU API: ",
+            "访问": "Visit",
+            "MinerU 官网": "MinerU Website",
+            "注册/登录，点击右上角": "to sign up/in. Click top-right",
+            "个人中心 —— 秘钥管理 —— 添加秘钥": "Personal Center -> Key Management -> Add Key",
+            "即可获取您的 API Key。将其复制并填入右侧配置面板中的": "to copy your API Key. Paste it into the",
+            "MinerU Token": "MinerU Token",
+            "输入框中并保存。": "input box on the config panel and save.",
+            "3. 选择识别引擎：": "3. Select Extraction Engine: ",
+            "在右侧配置面板中选择适合的 API 引擎。如已配置 MinerU Token，建议选用其强大的云端多模态大模型；离线时系统可自动无缝降级选用本地原生 OCR 引擎。": "Choose a suitable engine in the config panel. Cloud VLM (MinerU) is highly recommended; offline requests automatically fallback to local OCR.",
+            "4. 设定解析格式：": "4. Set Output Preferences: ",
+            "通过勾选“表格”、“纯文本”或“数学公式”等偏好设定，精细控制文档内容的渲染形式。": "Fine-tune output rendering format by checking Table, Plain Text, or Math Formula preferences.",
+            "5. 开始并监控提取：": "5. Run & Monitor: ",
+            "点击“开始提取”按键，系统将显示每张切片的实时进度。如有需要，运行中可随时点击“暂停”、“继续”或“终止”。": "Click 'Start Extraction'. Real-time progress is shown for each slice. Pause, resume, or terminate tasks at any time.",
+            "6. 浏览与下载结果：": "6. View & Download Results: ",
+            "解析完成后，您可以在“切片明细”中对比并保存编辑，或在“合成结果预览”里阅读 Markdown 并在右上方直接编辑，一键打包下载为 Word、PDF、Markdown 或 Excel 表格文件。": "Compare/edit in 'Slice Details', or view/edit Markdown in 'Compiled Preview'. One-click download as Word, PDF, Markdown, or Excel.",
+            
+            // 双重项目冲突弹窗
+            "如何处理并存的项目？": "How to handle conflicting tasks?",
+            "检测到您已**输入网页链接**且**载入了本地文件/图片**。": "We detected both **a webpage URL** and **local files** in the queue.",
+            "请选择您希望执行的操作分支：": "Please choose which task branch to proceed with:",
+            "合并解析 (合并为一个报告)": "Merge Tasks (Combine into one report)",
+            "仅处理本地文件队列": "Process Local Files Only",
+            "仅处理输入的网页链接": "Process Webpage URL Only",
+            "取消": "Cancel",
+            
+            // 进度与中间状态
+            "继续": "Resume",
+            "终止": "Terminate",
+            "暂停": "Pause",
+            "排队中": "Queued",
             "正在处理中...": "Processing...",
             "网页内容抓取中...": "Scraping webpage...",
             "图像处理与分析中...": "Analyzing image...",
-            "清空历史": "Clear History",
-            "输出目录": "Output Folder"
+            "已完成": "Completed",
+            "失败": "Failed",
+            
+            // 报告与结果明细
+            "切片明细": "Slice Details",
+            "合成结果预览": "Compiled Preview",
+            "导出合并结果": "Export Merged Result",
+            "重新生成": "Regenerate",
+            "打包下载": "Download Package",
+            "复制": "Copy",
+            "已复制": "Copied",
+            "保存修改": "Save Edits",
+            "输出目录": "Output Folder",
+            "第一张": "First",
+            "前一张": "Prev",
+            "后一张": "Next",
+            "最后一张": "Last",
+            
+            // 历史记录面板
+            "历史记录 (History)": "Task History",
+            "暂无历史记录": "No history available",
+            "全部": "All",
+            "图片": "Images",
+            "网页": "Webpages",
+            "查看详情": "View Details",
+            "删除": "Delete"
         };
-        
+
         let currentLang = localStorage.getItem("lang") || "zh";
-        
+        let i18nObserver = null;
+
+        function translateText(text) {
+            if (!text) return text;
+            const trimmed = text.trim();
+            if (i18nDict[trimmed]) {
+                return text.replace(trimmed, i18nDict[trimmed]);
+            }
+            for (let key in i18nDict) {
+                if (trimmed.includes(key)) {
+                    return text.replace(key, i18nDict[key]);
+                }
+            }
+            return text;
+        }
+
+        function translateDOM(node) {
+            if (!node) return;
+            if (node.nodeType === 3) { // Text node
+                const val = node.nodeValue;
+                if (val && /[一-龥]/.test(val)) {
+                    node.nodeValue = translateText(val);
+                }
+            } else if (node.nodeType === 1 && node.nodeName !== "SCRIPT" && node.nodeName !== "STYLE" && node.nodeName !== "TEXTAREA") {
+                if (node.placeholder && /[一-龥]/.test(node.placeholder)) {
+                    const trimmed = node.placeholder.trim();
+                    if (i18nDict[trimmed]) node.placeholder = i18nDict[trimmed];
+                }
+                if (node.title && /[一-龥]/.test(node.title)) {
+                    const trimmed = node.title.trim();
+                    if (i18nDict[trimmed]) node.title = i18nDict[trimmed];
+                }
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    translateDOM(node.childNodes[i]);
+                }
+            }
+        }
+
         function applyLanguage() {
             const isEn = currentLang === "en";
             document.getElementById("lang-text").textContent = isEn ? "中" : "EN";
-            
-            // Translate data-i18n attributes
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (key === 'nav_intro') el.textContent = isEn ? i18nDict["简介"] : "简介";
-                if (key === 'nav_usage') el.textContent = isEn ? i18nDict["使用"] : "使用";
-                if (key === 'nav_theme') el.textContent = isEn ? i18nDict["主题"] : "主题";
-                if (key === 'nav_hide_config') {
-                    const isHidden = el.textContent.includes('显示') || el.textContent.includes('Show');
-                    el.textContent = isEn ? (isHidden ? i18nDict["显示配置"] : i18nDict["隐藏配置"]) : (isHidden ? "显示配置" : "隐藏配置");
+
+            if (isEn) {
+                translateDOM(document.body);
+
+                const configTextSpan = document.getElementById("toggle-sidebar-text");
+                if (configTextSpan) {
+                    if (configTextSpan.textContent.includes("隐藏")) configTextSpan.textContent = "Hide Config";
+                    if (configTextSpan.textContent.includes("显示")) configTextSpan.textContent = "Show Config";
                 }
-                if (key === 'nav_history') el.textContent = isEn ? i18nDict["历史记录"] : "历史记录";
-            });
-            
-            // Translate titles
-            document.querySelectorAll('[title]').forEach(el => {
-                const orig = el.getAttribute('data-orig-title') || el.getAttribute('title');
-                if (!el.getAttribute('data-orig-title')) {
-                    el.setAttribute('data-orig-title', orig);
-                }
-                if (isEn && i18nDict[orig]) {
-                    el.setAttribute('title', i18nDict[orig]);
-                } else if (!isEn && el.getAttribute('data-orig-title')) {
-                    el.setAttribute('title', el.getAttribute('data-orig-title'));
-                }
-            });
-            
-            // Simple text replacement for common elements
-            const walkDOM = function(node) {
-                if (node.nodeType === 3) { // Text node
-                    const text = node.nodeValue.trim();
-                    if (text) {
-                        if (!node.origText) node.origText = text;
-                        if (isEn && i18nDict[node.origText]) {
-                            node.nodeValue = node.nodeValue.replace(node.origText, i18nDict[node.origText]);
-                        } else if (!isEn && node.origText) {
-                            // Only restore if it was translated
-                            const engText = i18nDict[node.origText];
-                            if (engText && node.nodeValue.includes(engText)) {
-                                node.nodeValue = node.nodeValue.replace(engText, node.origText);
+
+                if (!i18nObserver) {
+                    i18nObserver = new MutationObserver((mutations) => {
+                        i18nObserver.disconnect();
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === "childList") {
+                                mutation.addedNodes.forEach((node) => {
+                                    translateDOM(node);
+                                });
+                            } else if (mutation.type === "characterData") {
+                                const val = mutation.target.nodeValue;
+                                if (val && /[一-龥]/.test(val)) {
+                                    mutation.target.nodeValue = translateText(val);
+                                }
                             }
-                        }
-                    }
-                } else if (node.nodeType === 1 && node.nodeName !== "SCRIPT" && node.nodeName !== "STYLE") {
-                    // Also check placeholders
-                    if (node.placeholder) {
-                        if (!node.origPlaceholder) node.origPlaceholder = node.placeholder;
-                        if (isEn && i18nDict[node.origPlaceholder]) {
-                            node.placeholder = i18nDict[node.origPlaceholder];
-                        } else if (!isEn && node.origPlaceholder) {
-                            node.placeholder = node.origPlaceholder;
-                        }
-                    }
-                    for (let i = 0; i < node.childNodes.length; i++) {
-                        walkDOM(node.childNodes[i]);
-                    }
+                        });
+                        startObserving();
+                    });
                 }
-            };
-            
-            walkDOM(document.body);
+                startObserving();
+            } else {
+                if (i18nObserver) {
+                    i18nObserver.disconnect();
+                }
+                window.location.reload();
+            }
         }
-        
+
+        function startObserving() {
+            if (i18nObserver) {
+                i18nObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+            }
+        }
+
         function toggleLanguage() {
             currentLang = currentLang === "zh" ? "en" : "zh";
             localStorage.setItem("lang", currentLang);
             applyLanguage();
         }
-        
-        // Apply on load
+
         document.addEventListener("DOMContentLoaded", () => {
             if (currentLang === "en") {
                 applyLanguage();
             }
         });
     </script>
-
 </body>
 </html>
