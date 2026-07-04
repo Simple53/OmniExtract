@@ -17,11 +17,13 @@ jobs:
             platform: "win64"
             ext: ".exe"
             icon: '--icon="static/logo.ico"'
+            artifact_pattern: "dist/*.exe"
           - os: macos-latest
             sep: ":"
             platform: "macos"
             ext: ""
             icon: ''
+            artifact_pattern: "dist/*.dmg"
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -73,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.platform }}
-          path: dist/OmniExtract-*
+          path: ${{ matrix.artifact_pattern }}
 
   release:
     needs: build
